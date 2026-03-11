@@ -54,6 +54,34 @@ jobs:
           CI: true
           SMB_TEST_PORT: 4450
 
+      - name: Run FTP integration tests
+        run: ./tests/ftp_test.sh
+        env:
+          CI: true
+          FTP_TEST_PORT: 2121
+
+      - name: Run HTTP integration tests
+        run: ./tests/http_test.sh
+        env:
+          CI: true
+          HTTP_TEST_PORT: 8080
+
+      - name: Run CLI tests
+        run: ./tests/cli_test.sh
+        env:
+          CI: true
+
+      - name: Install expect (for auth tests)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y expect
+
+      - name: Run authentication tests
+        run: ./tests/auth_test.sh
+        env:
+          CI: true
+          HTTP_AUTH_PORT: 8081
+          FTP_AUTH_PORT: 2122
+
   lint:
     runs-on: ubuntu-latest
     steps:

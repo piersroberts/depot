@@ -1,0 +1,25 @@
+server_name = "TestDepot-FTP"
+log_level = "warn"
+
+[shares.TestShare]
+path = "tests/fixtures"
+virtual_path = "/testshare"
+read_only = true
+enabled = true
+
+[protocols.ftp]
+enabled = true
+port = 2121
+bind_address = "127.0.0.1"
+pasv_ports_start = 30000
+pasv_ports_end = 30010
+anonymous = true
+
+[protocols.http]
+enabled = false
+
+[protocols.smb]
+enabled = false
+
+[admin]
+enabled = false

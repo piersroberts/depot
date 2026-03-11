@@ -1,0 +1,25 @@
+server_name = "TestDepot-HTTP"
+log_level = "warn"
+
+[shares.TestShare]
+path = "tests/fixtures"
+virtual_path = "/testshare"
+read_only = true
+enabled = true
+
+[protocols.ftp]
+enabled = false
+
+[protocols.http]
+enabled = true
+port = 8080
+bind_address = "127.0.0.1"
+require_auth = false
+show_file_sizes = true
+show_dates = true
+
+[protocols.smb]
+enabled = false
+
+[admin]
+enabled = false
