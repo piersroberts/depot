@@ -482,7 +482,9 @@ async fn main() -> anyhow::Result<()> {
         Config::default()
     };
 
-    // Initialize logging
+    // Initialize logging (enable ANSI colors on Windows)
+    let _ = enable_ansi_support::enable_ansi_support();
+
     let filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&config.log_level));
 
