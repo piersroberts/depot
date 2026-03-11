@@ -43,7 +43,7 @@ thiserror = "1"
 argon2 = "0.5"
 
 # Terminal handling (for password input)
-libc = "0.2"
+rpassword = "7"
 
 # Async utilities
 async-trait = "0.1"
@@ -57,10 +57,6 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # For future SQLite indexing (optional feature)
 # rusqlite = { version = "0.31", optional = true, features = ["bundled"] }
-
-# Windows console API (for password input on Windows)
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = ["Win32_System_Console"] }
 
 [features]
 default = []

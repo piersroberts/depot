@@ -243,8 +243,8 @@ fn prompt_password(prompt: &str) -> anyhow::Result<String> {
     print!("{}", prompt);
     io::stdout().flush()?;
     
-    // Try to read password without echo if possible
-    let password = rpassword_read().unwrap_or_else(|| {
+    // Use rpassword for cross-platform hidden input
+    let password = rpassword::read_password().unwrap_or_else(|_| {
         // Fallback to regular input
         let mut input = String::new();
         io::stdin().read_line(&mut input).ok();
@@ -252,71 +252,6 @@ fn prompt_password(prompt: &str) -> anyhow::Result<String> {
     });
     
     Ok(password)
-}
-
-/// Try to read password without echo
-fn rpassword_read() -> Option<String> {
-    use std::io::{self, BufRead};
-    
-    // On Unix, we can disable echo via termios
-    #[cfg(unix)]
-    {
-        use std::os::unix::io::AsRawFd;
-        
-        let stdin = io::stdin();
-        let fd = stdin.as_raw_fd();
-        
-        // Try to get and modify terminal settings
-        unsafe {
-            let mut termios: libc::termios = std::mem::zeroed();
-            if libc::tcgetattr(fd, &mut termios) == 0 {
-                let old_termios = termios;
-                termios.c_lflag &= !libc::ECHO;
-                libc::tcsetattr(fd, libc::TCSANOW, &termios);
-                
-                let mut line = String::new();
-                let result = stdin.lock().read_line(&mut line).ok().map(|_| {
-                    println!(); // New line after hidden input
-                    line.trim().to_string()
-                });
-                
-                libc::tcsetattr(fd, libc::TCSANOW, &old_termios);
-                return result;
-            }
-        }
-    }
-    
-    // On Windows, use the console API to disable echo
-    #[cfg(windows)]
-    {
-        use std::os::windows::io::AsRawHandle;
-        use windows_sys::Win32::System::Console::{
-            GetConsoleMode, SetConsoleMode, ENABLE_ECHO_INPUT,
-        };
-        
-        let stdin = io::stdin();
-        let handle = stdin.as_raw_handle() as isize;
-        
-        unsafe {
-            let mut mode: u32 = 0;
-            if GetConsoleMode(handle, &mut mode) != 0 {
-                let old_mode = mode;
-                mode &= !ENABLE_ECHO_INPUT;
-                SetConsoleMode(handle, mode);
-                
-                let mut line = String::new();
-                let result = stdin.lock().read_line(&mut line).ok().map(|_| {
-                    println!(); // New line after hidden input
-                    line.trim().to_string()
-                });
-                
-                SetConsoleMode(handle, old_mode);
-                return result;
-            }
-        }
-    }
-    
-    None
 }
 
 /// Add a new user to the configuration
