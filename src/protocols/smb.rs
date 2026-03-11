@@ -2047,7 +2047,7 @@ fn format_both_directory_info(
     data.extend_from_slice(&name_bytes);
 
     // Pad to 8-byte alignment
-    while data.len() % 8 != 0 {
+    while !data.len().is_multiple_of(8) {
         data.push(0);
     }
 
@@ -2089,7 +2089,7 @@ fn format_full_directory_info(
     data.extend_from_slice(&0u32.to_le_bytes()); // EaSize
     data.extend_from_slice(&name_bytes); // FileName
 
-    while data.len() % 8 != 0 {
+    while !data.len().is_multiple_of(8) {
         data.push(0);
     }
 
@@ -2124,7 +2124,7 @@ fn format_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: bool,
     data.extend_from_slice(&(name_bytes.len() as u32).to_le_bytes());
     data.extend_from_slice(&name_bytes);
 
-    while data.len() % 8 != 0 {
+    while !data.len().is_multiple_of(8) {
         data.push(0);
     }
 
