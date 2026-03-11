@@ -130,7 +130,7 @@ pub fn hash_password(password: &str) -> anyhow::Result<String> {
     let argon2 = Argon2::default();
     let hash = argon2
         .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| anyhow::anyhow!("Failed to hash password: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to hash password: {e}"))?;
     Ok(hash.to_string())
 }
 
@@ -485,7 +485,7 @@ impl Config {
     /// Add a new user to the configuration
     pub fn add_user(&mut self, username: String, user: User) -> anyhow::Result<()> {
         if self.users.contains_key(&username) {
-            anyhow::bail!("User '{}' already exists", username);
+            anyhow::bail!("User '{username}' already exists");
         }
         self.users.insert(username, user);
         Ok(())
@@ -495,7 +495,7 @@ impl Config {
     pub fn remove_user(&mut self, username: &str) -> anyhow::Result<()> {
         self.users
             .remove(username)
-            .ok_or_else(|| anyhow::anyhow!("User '{}' not found", username))?;
+            .ok_or_else(|| anyhow::anyhow!("User '{username}' not found"))?;
         Ok(())
     }
 
@@ -504,7 +504,7 @@ impl Config {
         let user = self
             .users
             .get_mut(username)
-            .ok_or_else(|| anyhow::anyhow!("User '{}' not found", username))?;
+            .ok_or_else(|| anyhow::anyhow!("User '{username}' not found"))?;
 
         if !user.shares.contains(&share_name.to_string()) {
             user.shares.push(share_name.to_string());
@@ -517,7 +517,7 @@ impl Config {
         let user = self
             .users
             .get_mut(username)
-            .ok_or_else(|| anyhow::anyhow!("User '{}' not found", username))?;
+            .ok_or_else(|| anyhow::anyhow!("User '{username}' not found"))?;
 
         user.shares.retain(|s| s != share_name);
         Ok(())

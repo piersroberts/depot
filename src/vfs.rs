@@ -213,7 +213,7 @@ impl VirtualFilesystem for MergedVfs {
                                 created: None,
                                 read_only: mount.read_only,
                             },
-                            virtual_path: format!("/{}", root_name),
+                            virtual_path: format!("/{root_name}"),
                         });
                     }
                 } else if mount.virtual_path == "/" {
@@ -230,7 +230,7 @@ impl VirtualFilesystem for MergedVfs {
                         entries.push(VfsDirEntry {
                             name: name.clone(),
                             metadata: meta,
-                            virtual_path: format!("/{}", name),
+                            virtual_path: format!("/{name}"),
                         });
                     }
                 }
@@ -375,7 +375,7 @@ fn normalize_virtual_path(path: &str) -> String {
 
     // Ensure leading slash
     if !normalized.starts_with('/') {
-        normalized = format!("/{}", normalized);
+        normalized = format!("/{normalized}");
     }
 
     // Remove trailing slash (except for root)

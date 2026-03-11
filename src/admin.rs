@@ -115,8 +115,8 @@ async fn basic_auth_middleware(
 ) -> Response<Body> {
     if let Some(auth_header) = request.headers().get(header::AUTHORIZATION) {
         if let Ok(auth_str) = auth_header.to_str() {
-            if auth_str.starts_with("Basic ") {
-                if let Ok(decoded) = base64_decode(&auth_str[6..]) {
+            if let Some(stripped) = auth_str.strip_prefix("Basic ") {
+                if let Ok(decoded) = base64_decode(stripped) {
                     if let Some((user, pass)) = decoded.split_once(':') {
                         if user == state.admin_config.username
                             && pass == state.admin_config.password
@@ -200,7 +200,7 @@ async fn admin_dashboard(State(state): State<AdminState>) -> impl IntoResponse {
     };
 
     let html = templates::render("admin/dashboard.html", ctx)
-        .unwrap_or_else(|e| format!("Template error: {}", e));
+        .unwrap_or_else(|e| format!("Template error: {e}"));
 
     Html(html)
 }
@@ -228,7 +228,7 @@ async fn admin_shares(State(state): State<AdminState>) -> impl IntoResponse {
     };
 
     let html = templates::render("admin/shares.html", ctx)
-        .unwrap_or_else(|e| format!("Template error: {}", e));
+        .unwrap_or_else(|e| format!("Template error: {e}"));
 
     Html(html)
 }
@@ -243,7 +243,7 @@ async fn admin_config_view(State(state): State<AdminState>) -> impl IntoResponse
     };
 
     let html = templates::render("admin/config.html", ctx)
-        .unwrap_or_else(|e| format!("Template error: {}", e));
+        .unwrap_or_else(|e| format!("Template error: {e}"));
 
     Html(html)
 }

@@ -231,8 +231,8 @@ fn init_config() -> anyhow::Result<()> {
     println!("Created example configuration: {}", config_path.display());
     println!();
     println!("Admin panel credentials (save these!):");
-    println!("  Username: {}", admin_username);
-    println!("  Password: {}", admin_password);
+    println!("  Username: {admin_username}");
+    println!("  Password: {admin_password}");
     println!();
     println!("Please edit the file to configure your shares before starting the server.");
 
@@ -243,7 +243,7 @@ fn init_config() -> anyhow::Result<()> {
 fn prompt_password(prompt: &str) -> anyhow::Result<String> {
     use std::io::{self, Write};
 
-    print!("{}", prompt);
+    print!("{prompt}");
     io::stdout().flush()?;
 
     // Use rpassword for cross-platform hidden input
@@ -270,7 +270,7 @@ fn cmd_add_user(config_path: &PathBuf, username: &str) -> anyhow::Result<()> {
 
     // Check if user already exists
     if config.users.contains_key(username) {
-        anyhow::bail!("User '{}' already exists", username);
+        anyhow::bail!("User '{username}' already exists");
     }
 
     // Prompt for password
@@ -289,11 +289,8 @@ fn cmd_add_user(config_path: &PathBuf, username: &str) -> anyhow::Result<()> {
     config.add_user(username.to_string(), user)?;
     config.save(config_path)?;
 
-    println!("User '{}' added successfully.", username);
-    println!(
-        "Use 'depot grant {} <share>' to grant access to shares.",
-        username
-    );
+    println!("User '{username}' added successfully.");
+    println!("Use 'depot grant {username} <share>' to grant access to shares.");
 
     Ok(())
 }
@@ -308,7 +305,7 @@ fn cmd_remove_user(config_path: &PathBuf, username: &str) -> anyhow::Result<()> 
     config.remove_user(username)?;
     config.save(config_path)?;
 
-    println!("User '{}' removed.", username);
+    println!("User '{username}' removed.");
 
     Ok(())
 }
@@ -323,7 +320,7 @@ fn cmd_set_password(config_path: &PathBuf, username: &str) -> anyhow::Result<()>
 
     // Check if user exists
     if !config.users.contains_key(username) {
-        anyhow::bail!("User '{}' not found", username);
+        anyhow::bail!("User '{username}' not found");
     }
 
     // Prompt for new password
@@ -344,7 +341,7 @@ fn cmd_set_password(config_path: &PathBuf, username: &str) -> anyhow::Result<()>
     }
     config.save(config_path)?;
 
-    println!("Password updated for user '{}'.", username);
+    println!("Password updated for user '{username}'.");
 
     Ok(())
 }
@@ -371,9 +368,9 @@ fn cmd_grant(config_path: &PathBuf, username: &str, share_name: &str) -> anyhow:
     config.save(config_path)?;
 
     if share_name == "*" {
-        println!("User '{}' granted access to ALL shares.", username);
+        println!("User '{username}' granted access to ALL shares.");
     } else {
-        println!("User '{}' granted access to '{}'.", username, share_name);
+        println!("User '{username}' granted access to '{share_name}'.");
     }
 
     Ok(())
@@ -389,7 +386,7 @@ fn cmd_revoke(config_path: &PathBuf, username: &str, share_name: &str) -> anyhow
     config.revoke_share(username, share_name)?;
     config.save(config_path)?;
 
-    println!("User '{}' access to '{}' revoked.", username, share_name);
+    println!("User '{username}' access to '{share_name}' revoked.");
 
     Ok(())
 }
@@ -417,10 +414,10 @@ fn cmd_list_users(config_path: &PathBuf) -> anyhow::Result<()> {
         } else {
             user.shares.join(", ")
         };
-        println!("  {} ({})", username, status);
-        println!("    Shares: {}", shares);
+        println!("  {username} ({status})");
+        println!("    Shares: {shares}");
         if let Some(desc) = &user.description {
-            println!("    Description: {}", desc);
+            println!("    Description: {desc}");
         }
     }
 

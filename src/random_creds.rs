@@ -471,7 +471,7 @@ pub fn generate_username() -> String {
     let color = COLORS.choose(&mut rng).unwrap();
     let noun = NOUNS.choose(&mut rng).unwrap();
 
-    format!("{}{}{}", adjective, color, noun)
+    format!("{adjective}{color}{noun}")
 }
 
 /// Generate a random password with good entropy

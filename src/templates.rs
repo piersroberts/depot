@@ -87,7 +87,7 @@ fn filter_filesize(value: Value) -> Result<String, minijinja::Error> {
     } else if bytes >= KB {
         format!("{:.1}K", bytes as f64 / KB as f64)
     } else {
-        format!("{}", bytes)
+        format!("{bytes}")
     };
 
     Ok(result)

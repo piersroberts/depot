@@ -147,7 +147,7 @@ async fn handle_root(State(state): State<AppState>) -> impl IntoResponse {
 
 /// Handle any path
 async fn handle_path(State(state): State<AppState>, Path(path): Path<String>) -> impl IntoResponse {
-    let virtual_path = format!("/{}", path);
+    let virtual_path = format!("/{path}");
 
     // Check if it's a directory or file
     if state.vfs.is_dir(&virtual_path).await {
@@ -217,7 +217,7 @@ async fn handle_file(state: &AppState, path: &str) -> Response<Body> {
         .header(header::CONTENT_LENGTH, metadata.len())
         .header(
             header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{}\"", filename),
+            format!("attachment; filename=\"{filename}\""),
         )
         .header(header::CONNECTION, "close")
         .body(body)
@@ -285,8 +285,7 @@ fn generate_directory_html(
         server_name => "Depot File Server",
     };
 
-    templates::render("http/directory.html", ctx)
-        .unwrap_or_else(|e| format!("Template error: {}", e))
+    templates::render("http/directory.html", ctx).unwrap_or_else(|e| format!("Template error: {e}"))
 }
 
 /// Create an error response using template
@@ -303,7 +302,7 @@ fn error_response(status: StatusCode, message: &str, config: &HttpConfig) -> Res
     };
 
     let html = templates::render("http/error.html", ctx)
-        .unwrap_or_else(|e| format!("Template error: {}", e));
+        .unwrap_or_else(|e| format!("Template error: {e}"));
 
     Response::builder()
         .status(status)
@@ -335,8 +334,8 @@ async fn http_auth_middleware(
 ) -> Response<Body> {
     if let Some(auth_header) = request.headers().get(header::AUTHORIZATION) {
         if let Ok(auth_str) = auth_header.to_str() {
-            if auth_str.starts_with("Basic ") {
-                if let Ok(decoded) = base64_decode(&auth_str[6..]) {
+            if let Some(stripped) = auth_str.strip_prefix("Basic ") {
+                if let Ok(decoded) = base64_decode(stripped) {
                     if let Some((username, password)) = decoded.split_once(':') {
                         // Check against configured users
                         if let Some(user) = state.users.get(username) {

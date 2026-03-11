@@ -146,7 +146,7 @@ impl SmbHeader {
                 "Header too short",
             ));
         }
-        if &data[0..4] != &SMB_MAGIC {
+        if data[0..4] != SMB_MAGIC {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid SMB magic",
@@ -349,7 +349,7 @@ fn build_vfs_path(share_root: &str, client_path: &str) -> String {
     if relative_path.is_empty() {
         share_root.to_string()
     } else {
-        format!("{}/{}", share_root, relative_path)
+        format!("{share_root}/{relative_path}")
     }
 }
 
@@ -653,7 +653,7 @@ impl SmbServer {
             .data
             .iter()
             .take(50)
-            .map(|b| format!("{:02x}", b))
+            .map(|b| format!("{b:02x}"))
             .collect::<Vec<_>>()
             .join(" ");
         tracing::trace!("TREE_CONNECT data hex: {}", hex);
@@ -661,7 +661,7 @@ impl SmbServer {
         // Extract share name from path (after last \)
         let share_name = share_path
             .split('\\')
-            .last()
+            .next_back()
             .unwrap_or(&share_path)
             .to_uppercase();
 
@@ -986,7 +986,7 @@ impl SmbServer {
         // Calculate relative offset within request.data
         // param_offset is from start of SMB header
         // request.data starts after: header (32) + word_count (1) + params + byte_count (2)
-        let word_count = (request.params.len() / 2) as usize;
+        let word_count = request.params.len() / 2;
         let data_start_offset = 32 + 1 + (word_count * 2) + 2;
         let relative_offset = param_offset.saturating_sub(data_start_offset);
 
@@ -1224,7 +1224,7 @@ impl SmbServer {
         };
 
         // Calculate relative offset within request.data
-        let word_count = (request.params.len() / 2) as usize;
+        let word_count = request.params.len() / 2;
         let data_start_offset = 32 + 1 + (word_count * 2) + 2;
         let relative_offset = param_offset.saturating_sub(data_start_offset);
 
@@ -1328,7 +1328,7 @@ impl SmbServer {
         param_offset: usize,
     ) -> SmbMessage {
         // Calculate relative offset within request.data
-        let word_count = (request.params.len() / 2) as usize;
+        let word_count = request.params.len() / 2;
         let data_start_offset = 32 + 1 + (word_count * 2) + 2;
         let relative_offset = param_offset.saturating_sub(data_start_offset);
 
@@ -1403,7 +1403,7 @@ impl SmbServer {
         // Calculate offset within request.data
         // param_offset is from start of SMB header (32 bytes)
         // Then: WordCount (1), Params (variable), ByteCount (2), then Data
-        let word_count = (request.params.len() / 2) as usize;
+        let word_count = request.params.len() / 2;
         let data_start_offset = 32 + 1 + (word_count * 2) + 2;
         let relative_offset = param_offset.saturating_sub(data_start_offset);
 
@@ -2283,7 +2283,7 @@ fn format_path_info(metadata: &VfsMetadata, info_level: u16) -> Vec<u8> {
             // SMB_QUERY_FILE_EA_INFO (4 bytes)
             data.extend_from_slice(&0u32.to_le_bytes()); // EaSize (no extended attributes)
         }
-        0x0107 | _ => {
+        _ => {
             // SMB_QUERY_FILE_ALL_INFO (default for unknown levels)
             let created = systemtime_to_filetime(metadata.created);
             let modified = systemtime_to_filetime(metadata.modified);
