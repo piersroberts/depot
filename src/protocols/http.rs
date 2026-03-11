@@ -498,7 +498,10 @@ mod tests {
     fn test_get_parent_path_nested() {
         assert_eq!(get_parent_path("/foo/bar"), "/foo");
         assert_eq!(get_parent_path("/a/b/c"), "/a/b");
-        assert_eq!(get_parent_path("/deep/nested/path/file"), "/deep/nested/path");
+        assert_eq!(
+            get_parent_path("/deep/nested/path/file"),
+            "/deep/nested/path"
+        );
     }
 
     #[test]
@@ -546,13 +549,19 @@ mod tests {
         assert_eq!(guess_content_type("archive.zip"), "application/zip");
         assert_eq!(guess_content_type("data.tar"), "application/x-tar");
         assert_eq!(guess_content_type("compressed.gz"), "application/gzip");
-        assert_eq!(guess_content_type("archive.7z"), "application/x-7z-compressed");
+        assert_eq!(
+            guess_content_type("archive.7z"),
+            "application/x-7z-compressed"
+        );
     }
 
     #[test]
     fn test_guess_content_type_unknown() {
         assert_eq!(guess_content_type("file.xyz"), "application/octet-stream");
-        assert_eq!(guess_content_type("noextension"), "application/octet-stream");
+        assert_eq!(
+            guess_content_type("noextension"),
+            "application/octet-stream"
+        );
         assert_eq!(guess_content_type(".hidden"), "application/octet-stream");
     }
 
@@ -572,9 +581,15 @@ mod tests {
     #[test]
     fn test_base64_decode_basic_auth() {
         // "user:password" encoded
-        assert_eq!(base64_decode("dXNlcjpwYXNzd29yZA==").unwrap(), "user:password");
+        assert_eq!(
+            base64_decode("dXNlcjpwYXNzd29yZA==").unwrap(),
+            "user:password"
+        );
         // "admin:secret123" encoded
-        assert_eq!(base64_decode("YWRtaW46c2VjcmV0MTIz").unwrap(), "admin:secret123");
+        assert_eq!(
+            base64_decode("YWRtaW46c2VjcmV0MTIz").unwrap(),
+            "admin:secret123"
+        );
     }
 
     #[test]

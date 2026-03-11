@@ -142,7 +142,10 @@ mod tests {
     fn test_filter_filesize_megabytes() {
         assert_eq!(filter_filesize(Value::from(1048576u64)).unwrap(), "1.0M");
         assert_eq!(filter_filesize(Value::from(1572864u64)).unwrap(), "1.5M");
-        assert_eq!(filter_filesize(Value::from(104857600u64)).unwrap(), "100.0M");
+        assert_eq!(
+            filter_filesize(Value::from(104857600u64)).unwrap(),
+            "100.0M"
+        );
     }
 
     #[test]

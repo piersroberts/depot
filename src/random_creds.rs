@@ -509,7 +509,10 @@ mod tests {
             let username = generate_username();
             // Count uppercase letters (starts of words)
             let uppercase_count = username.chars().filter(|c| c.is_uppercase()).count();
-            assert_eq!(uppercase_count, 3, "Username should have exactly 3 PascalCase words");
+            assert_eq!(
+                uppercase_count, 3,
+                "Username should have exactly 3 PascalCase words"
+            );
         }
     }
 
@@ -577,7 +580,11 @@ mod tests {
         for _ in 0..20 {
             let password = generate_password(50);
             for c in ambiguous.chars() {
-                assert!(!password.contains(c), "Password contains ambiguous char: {}", c);
+                assert!(
+                    !password.contains(c),
+                    "Password contains ambiguous char: {}",
+                    c
+                );
             }
         }
     }
