@@ -553,3 +553,220 @@ impl Default for Config {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hash_and_verify_password() {
+        let password = "secret123";
+        let hash = hash_password(password).expect("hashing should succeed");
+
+        assert!(verify_password(password, &hash));
+        assert!(!verify_password("wrong_password", &hash));
+        assert!(!verify_password("", &hash));
+    }
+
+    #[test]
+    fn test_verify_password_invalid_hash() {
+        assert!(!verify_password("password", "invalid_hash"));
+        assert!(!verify_password("password", ""));
+    }
+
+    #[test]
+    fn test_user_new() {
+        let user = User::new("mypassword", vec!["Public".to_string()]).unwrap();
+        assert!(user.verify_password("mypassword"));
+        assert!(!user.verify_password("wrongpassword"));
+        assert!(user.enabled);
+        assert_eq!(user.shares, vec!["Public"]);
+    }
+
+    #[test]
+    fn test_user_has_access_to() {
+        let user = User {
+            password_hash: hash_password("test").unwrap(),
+            shares: vec!["Public".to_string(), "Games".to_string()],
+            description: None,
+            enabled: true,
+        };
+
+        assert!(user.has_access_to("Public"));
+        assert!(user.has_access_to("Games"));
+        assert!(!user.has_access_to("Private"));
+    }
+
+    #[test]
+    fn test_user_has_access_to_wildcard() {
+        let user = User {
+            password_hash: hash_password("test").unwrap(),
+            shares: vec!["*".to_string()],
+            description: None,
+            enabled: true,
+        };
+
+        assert!(user.has_access_to("Public"));
+        assert!(user.has_access_to("Games"));
+        assert!(user.has_access_to("AnyShare"));
+    }
+
+    #[test]
+    fn test_user_has_access_to_disabled() {
+        let user = User {
+            password_hash: hash_password("test").unwrap(),
+            shares: vec!["*".to_string()],
+            description: None,
+            enabled: false,
+        };
+
+        assert!(!user.has_access_to("Public"));
+        assert!(!user.has_access_to("Games"));
+    }
+
+    #[test]
+    fn test_config_add_user() {
+        let mut config = Config::default();
+        let user = User::new("password", vec![]).unwrap();
+
+        assert!(config.add_user("alice".to_string(), user.clone()).is_ok());
+        assert!(config.users.contains_key("alice"));
+
+        // Adding same user again should fail
+        assert!(config.add_user("alice".to_string(), user).is_err());
+    }
+
+    #[test]
+    fn test_config_remove_user() {
+        let mut config = Config::default();
+        let user = User::new("password", vec![]).unwrap();
+        config.add_user("bob".to_string(), user).unwrap();
+
+        assert!(config.remove_user("bob").is_ok());
+        assert!(!config.users.contains_key("bob"));
+
+        // Removing non-existent user should fail
+        assert!(config.remove_user("bob").is_err());
+    }
+
+    #[test]
+    fn test_config_grant_share() {
+        let mut config = Config::default();
+        let user = User::new("password", vec![]).unwrap();
+        config.add_user("alice".to_string(), user).unwrap();
+
+        assert!(config.grant_share("alice", "Games").is_ok());
+        assert!(config.users["alice"].shares.contains(&"Games".to_string()));
+
+        // Granting same share again should be idempotent
+        assert!(config.grant_share("alice", "Games").is_ok());
+        assert_eq!(
+            config.users["alice"]
+                .shares
+                .iter()
+                .filter(|s| *s == "Games")
+                .count(),
+            1
+        );
+
+        // Granting to non-existent user should fail
+        assert!(config.grant_share("nobody", "Games").is_err());
+    }
+
+    #[test]
+    fn test_config_revoke_share() {
+        let mut config = Config::default();
+        let user = User::new("password", vec!["Games".to_string()]).unwrap();
+        config.add_user("alice".to_string(), user).unwrap();
+
+        assert!(config.revoke_share("alice", "Games").is_ok());
+        assert!(!config.users["alice"].shares.contains(&"Games".to_string()));
+
+        // Revoking from non-existent user should fail
+        assert!(config.revoke_share("nobody", "Games").is_err());
+    }
+
+    #[test]
+    fn test_config_find_user() {
+        let mut config = Config::default();
+        let user = User::new("password", vec![]).unwrap();
+        config.add_user("alice".to_string(), user).unwrap();
+
+        assert!(config.find_user("alice").is_some());
+        assert!(config.find_user("nobody").is_none());
+    }
+
+    #[test]
+    fn test_config_find_user_disabled() {
+        let mut config = Config::default();
+        let mut user = User::new("password", vec![]).unwrap();
+        user.enabled = false;
+        config.add_user("alice".to_string(), user).unwrap();
+
+        // Disabled users should not be found
+        assert!(config.find_user("alice").is_none());
+    }
+
+    #[test]
+    fn test_config_authenticate_user() {
+        let mut config = Config::default();
+        let user = User::new("secret123", vec![]).unwrap();
+        config.add_user("alice".to_string(), user).unwrap();
+
+        assert!(config.authenticate_user("alice", "secret123").is_some());
+        assert!(config.authenticate_user("alice", "wrong").is_none());
+        assert!(config.authenticate_user("nobody", "secret123").is_none());
+    }
+
+    #[test]
+    fn test_config_share_names() {
+        let config = Config::default();
+        let names = config.share_names();
+        assert!(names.contains(&"Public".to_string()));
+    }
+
+    #[test]
+    fn test_default_ports() {
+        assert_eq!(default_ftp_port(), 2121);
+        assert_eq!(default_http_port(), 8080);
+        assert_eq!(default_smb_port(), 4450);
+        assert_eq!(default_admin_port(), 8888);
+    }
+
+    #[test]
+    fn test_ftp_config_default() {
+        let ftp = FtpConfig::default();
+        assert!(ftp.enabled);
+        assert_eq!(ftp.port, 2121);
+        assert!(!ftp.anonymous);
+        assert_eq!(ftp.passive_port_start, 60000);
+        assert_eq!(ftp.passive_port_end, 60100);
+    }
+
+    #[test]
+    fn test_http_config_default() {
+        let http = HttpConfig::default();
+        assert!(http.enabled);
+        assert_eq!(http.port, 8080);
+        assert!(!http.require_auth);
+        assert!(http.retro_compatible);
+    }
+
+    #[test]
+    fn test_smb_config_default() {
+        let smb = SmbConfig::default();
+        assert!(!smb.enabled);
+        assert_eq!(smb.port, 4450);
+        assert_eq!(smb.netbios_name, "DEPOT");
+        assert_eq!(smb.workgroup, "WORKGROUP");
+        assert!(smb.guest_access);
+    }
+
+    #[test]
+    fn test_admin_config_default() {
+        let admin = AdminConfig::default();
+        assert!(!admin.enabled);
+        assert_eq!(admin.port, 8888);
+        assert_eq!(admin.username, "admin");
+    }
+}

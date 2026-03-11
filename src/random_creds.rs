@@ -503,9 +503,52 @@ mod tests {
     }
 
     #[test]
+    fn test_username_has_three_words() {
+        // Generate multiple to ensure pattern holds
+        for _ in 0..10 {
+            let username = generate_username();
+            // Count uppercase letters (starts of words)
+            let uppercase_count = username.chars().filter(|c| c.is_uppercase()).count();
+            assert_eq!(uppercase_count, 3, "Username should have exactly 3 PascalCase words");
+        }
+    }
+
+    #[test]
+    fn test_username_uniqueness() {
+        let u1 = generate_username();
+        let u2 = generate_username();
+        // This could theoretically fail, but with large word lists it's unlikely
+        assert_ne!(u1, u2, "Usernames should be unique");
+    }
+
+    #[test]
+    fn test_username_reasonable_length() {
+        for _ in 0..10 {
+            let username = generate_username();
+            // Min: 3 letter words = 9, Max: ~8 letter words = 24
+            assert!(username.len() >= 6, "Username too short: {}", username);
+            assert!(username.len() <= 30, "Username too long: {}", username);
+        }
+    }
+
+    #[test]
     fn test_password_length() {
         let password = generate_password(16);
         assert_eq!(password.len(), 16);
+    }
+
+    #[test]
+    fn test_password_various_lengths() {
+        assert_eq!(generate_password(8).len(), 8);
+        assert_eq!(generate_password(12).len(), 12);
+        assert_eq!(generate_password(20).len(), 20);
+        assert_eq!(generate_password(32).len(), 32);
+    }
+
+    #[test]
+    fn test_password_zero_length() {
+        let password = generate_password(0);
+        assert!(password.is_empty());
     }
 
     #[test]
@@ -513,5 +556,44 @@ mod tests {
         let p1 = generate_password(16);
         let p2 = generate_password(16);
         assert_ne!(p1, p2, "Passwords should be unique");
+    }
+
+    #[test]
+    fn test_password_character_set() {
+        // Password should only contain allowed characters
+        let allowed = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*";
+        for _ in 0..10 {
+            let password = generate_password(20);
+            for c in password.chars() {
+                assert!(allowed.contains(c), "Invalid character in password: {}", c);
+            }
+        }
+    }
+
+    #[test]
+    fn test_password_no_ambiguous_chars() {
+        // Should not contain: l, I, O, 0, 1 (easily confused)
+        let ambiguous = "lIO01";
+        for _ in 0..20 {
+            let password = generate_password(50);
+            for c in ambiguous.chars() {
+                assert!(!password.contains(c), "Password contains ambiguous char: {}", c);
+            }
+        }
+    }
+
+    #[test]
+    fn test_word_lists_not_empty() {
+        assert!(!ADJECTIVES.is_empty());
+        assert!(!NOUNS.is_empty());
+        assert!(!COLORS.is_empty());
+    }
+
+    #[test]
+    fn test_word_lists_have_variety() {
+        // Ensure we have enough variety for good randomness
+        assert!(ADJECTIVES.len() >= 50, "Need more adjectives");
+        assert!(NOUNS.len() >= 50, "Need more nouns");
+        assert!(COLORS.len() >= 20, "Need more colors");
     }
 }

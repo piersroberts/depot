@@ -118,3 +118,66 @@ pub fn systemtime_to_timestamp(time: Option<std::time::SystemTime>) -> i64 {
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, UNIX_EPOCH};
+
+    #[test]
+    fn test_filter_filesize_bytes() {
+        assert_eq!(filter_filesize(Value::from(0u64)).unwrap(), "0");
+        assert_eq!(filter_filesize(Value::from(512u64)).unwrap(), "512");
+        assert_eq!(filter_filesize(Value::from(1023u64)).unwrap(), "1023");
+    }
+
+    #[test]
+    fn test_filter_filesize_kilobytes() {
+        assert_eq!(filter_filesize(Value::from(1024u64)).unwrap(), "1.0K");
+        assert_eq!(filter_filesize(Value::from(1536u64)).unwrap(), "1.5K");
+        assert_eq!(filter_filesize(Value::from(10240u64)).unwrap(), "10.0K");
+    }
+
+    #[test]
+    fn test_filter_filesize_megabytes() {
+        assert_eq!(filter_filesize(Value::from(1048576u64)).unwrap(), "1.0M");
+        assert_eq!(filter_filesize(Value::from(1572864u64)).unwrap(), "1.5M");
+        assert_eq!(filter_filesize(Value::from(104857600u64)).unwrap(), "100.0M");
+    }
+
+    #[test]
+    fn test_filter_filesize_gigabytes() {
+        assert_eq!(filter_filesize(Value::from(1073741824u64)).unwrap(), "1.0G");
+        assert_eq!(filter_filesize(Value::from(5368709120u64)).unwrap(), "5.0G");
+    }
+
+    #[test]
+    fn test_filter_datetime_zero() {
+        assert_eq!(filter_datetime(Value::from(0i64)).unwrap(), "-");
+    }
+
+    #[test]
+    fn test_filter_datetime_valid() {
+        // Use a known timestamp: 2024-01-15 12:00:00 UTC = 1705320000
+        let result = filter_datetime(Value::from(1705320000i64)).unwrap();
+        // Just verify it's not "-" and contains expected format
+        assert_ne!(result, "-");
+        assert!(result.contains("2024") || result.contains("2025")); // timezone may vary
+    }
+
+    #[test]
+    fn test_systemtime_to_timestamp_none() {
+        assert_eq!(systemtime_to_timestamp(None), 0);
+    }
+
+    #[test]
+    fn test_systemtime_to_timestamp_some() {
+        let time = UNIX_EPOCH + Duration::from_secs(1705320000);
+        assert_eq!(systemtime_to_timestamp(Some(time)), 1705320000);
+    }
+
+    #[test]
+    fn test_systemtime_to_timestamp_epoch() {
+        assert_eq!(systemtime_to_timestamp(Some(UNIX_EPOCH)), 0);
+    }
+}

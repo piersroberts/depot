@@ -428,9 +428,224 @@ mod tests {
     }
 
     #[test]
+    fn test_normalize_virtual_path_multiple_slashes() {
+        assert_eq!(normalize_virtual_path("///"), "/");
+        assert_eq!(normalize_virtual_path("///foo///bar///"), "/foo/bar");
+        assert_eq!(normalize_virtual_path("/a//b//c"), "/a/b/c");
+    }
+
+    #[test]
+    fn test_normalize_virtual_path_preserves_content() {
+        assert_eq!(normalize_virtual_path("/games/dos/doom"), "/games/dos/doom");
+        assert_eq!(
+            normalize_virtual_path("music/albums/rock"),
+            "/music/albums/rock"
+        );
+    }
+
+    #[test]
     fn test_get_root_segment() {
         assert_eq!(get_root_segment("/"), None);
         assert_eq!(get_root_segment("/games"), Some("games".to_string()));
         assert_eq!(get_root_segment("/games/dos"), Some("games".to_string()));
+    }
+
+    #[test]
+    fn test_get_root_segment_no_leading_slash() {
+        assert_eq!(get_root_segment("games"), Some("games".to_string()));
+        assert_eq!(get_root_segment("games/dos"), Some("games".to_string()));
+    }
+
+    #[test]
+    fn test_get_root_segment_empty() {
+        assert_eq!(get_root_segment(""), None);
+        assert_eq!(get_root_segment("//"), None);
+    }
+
+    #[test]
+    fn test_merged_vfs_new_empty() {
+        let shares = HashMap::new();
+        let vfs = MergedVfs::new(&shares);
+        assert!(vfs.mounts.is_empty());
+        assert!(vfs.root_entries.is_empty());
+    }
+
+    #[test]
+    fn test_merged_vfs_new_with_shares() {
+        let mut shares = HashMap::new();
+        shares.insert(
+            "Games".to_string(),
+            ShareConfig {
+                path: PathBuf::from("/data/games"),
+                virtual_path: "/games".to_string(),
+                read_only: true,
+                description: Some("Game files".to_string()),
+                enabled: true,
+            },
+        );
+        shares.insert(
+            "Music".to_string(),
+            ShareConfig {
+                path: PathBuf::from("/data/music"),
+                virtual_path: "/music".to_string(),
+                read_only: true,
+                description: None,
+                enabled: true,
+            },
+        );
+
+        let vfs = MergedVfs::new(&shares);
+        assert_eq!(vfs.mounts.len(), 2);
+        assert!(vfs.root_entries.contains_key("games"));
+        assert!(vfs.root_entries.contains_key("music"));
+    }
+
+    #[test]
+    fn test_merged_vfs_disabled_shares_excluded() {
+        let mut shares = HashMap::new();
+        shares.insert(
+            "Games".to_string(),
+            ShareConfig {
+                path: PathBuf::from("/data/games"),
+                virtual_path: "/games".to_string(),
+                read_only: true,
+                description: None,
+                enabled: true,
+            },
+        );
+        shares.insert(
+            "Private".to_string(),
+            ShareConfig {
+                path: PathBuf::from("/data/private"),
+                virtual_path: "/private".to_string(),
+                read_only: true,
+                description: None,
+                enabled: false,
+            },
+        );
+
+        let vfs = MergedVfs::new(&shares);
+        assert_eq!(vfs.mounts.len(), 1);
+        assert!(vfs.root_entries.contains_key("games"));
+        assert!(!vfs.root_entries.contains_key("private"));
+    }
+
+    #[test]
+    fn test_merged_vfs_find_mount_exact() {
+        let mut shares = HashMap::new();
+        shares.insert(
+            "Games".to_string(),
+            ShareConfig {
+                path: PathBuf::from("/data/games"),
+                virtual_path: "/games".to_string(),
+                read_only: true,
+                description: None,
+                enabled: true,
+            },
+        );
+
+        let vfs = MergedVfs::new(&shares);
+        let result = vfs.find_mount("/games");
+        assert!(result.is_some());
+        let (mount, remainder) = result.unwrap();
+        assert_eq!(mount.virtual_path, "/games");
+        assert_eq!(remainder, "");
+    }
+
+    #[test]
+    fn test_merged_vfs_find_mount_subpath() {
+        let mut shares = HashMap::new();
+        shares.insert(
+            "Games".to_string(),
+            ShareConfig {
+                path: PathBuf::from("/data/games"),
+                virtual_path: "/games".to_string(),
+                read_only: true,
+                description: None,
+                enabled: true,
+            },
+        );
+
+        let vfs = MergedVfs::new(&shares);
+        let result = vfs.find_mount("/games/dos/doom");
+        assert!(result.is_some());
+        let (mount, remainder) = result.unwrap();
+        assert_eq!(mount.virtual_path, "/games");
+        assert_eq!(remainder, "dos/doom");
+    }
+
+    #[test]
+    fn test_merged_vfs_find_mount_not_found() {
+        let mut shares = HashMap::new();
+        shares.insert(
+            "Games".to_string(),
+            ShareConfig {
+                path: PathBuf::from("/data/games"),
+                virtual_path: "/games".to_string(),
+                read_only: true,
+                description: None,
+                enabled: true,
+            },
+        );
+
+        let vfs = MergedVfs::new(&shares);
+        let result = vfs.find_mount("/music/rock");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_merged_vfs_resolve_path() {
+        // resolve_path requires the physical path to exist (for canonicalize)
+        // so we use a path that exists on all systems
+        let mut shares = HashMap::new();
+        shares.insert(
+            "Temp".to_string(),
+            ShareConfig {
+                path: std::env::temp_dir(),
+                virtual_path: "/temp".to_string(),
+                read_only: true,
+                description: None,
+                enabled: true,
+            },
+        );
+
+        let vfs = MergedVfs::new(&shares);
+        // Just resolve the mount point itself (should succeed if temp dir exists)
+        let result = vfs.resolve_path("/temp");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_merged_vfs_resolve_path_not_found() {
+        let mut shares = HashMap::new();
+        shares.insert(
+            "Games".to_string(),
+            ShareConfig {
+                path: PathBuf::from("/data/games"),
+                virtual_path: "/games".to_string(),
+                read_only: true,
+                description: None,
+                enabled: true,
+            },
+        );
+
+        let vfs = MergedVfs::new(&shares);
+        let result = vfs.resolve_path("/music/song.mp3");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_vfs_error_display() {
+        let err = VfsError::NotFound("/path".to_string());
+        assert!(err.to_string().contains("/path"));
+
+        let err = VfsError::PermissionDenied("/secret".to_string());
+        assert!(err.to_string().contains("/secret"));
+
+        let err = VfsError::IsDirectory("/dir".to_string());
+        assert!(err.to_string().contains("/dir"));
+
+        let err = VfsError::NotADirectory("/file".to_string());
+        assert!(err.to_string().contains("/file"));
     }
 }

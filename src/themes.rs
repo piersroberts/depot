@@ -215,3 +215,73 @@ const HIGH_CONTRAST: Theme = Theme {
     link_shadow: None,
     font_size: Some("18px"),
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_theme_valid_names() {
+        assert_eq!(get_theme("modern").name, "modern");
+        assert_eq!(get_theme("terminal").name, "terminal");
+        assert_eq!(get_theme("paperwhite").name, "paperwhite");
+        assert_eq!(get_theme("ocean").name, "ocean");
+        assert_eq!(get_theme("midnight").name, "midnight");
+        assert_eq!(get_theme("amber").name, "amber");
+        assert_eq!(get_theme("solarized").name, "solarized");
+        assert_eq!(get_theme("highcontrast").name, "highcontrast");
+    }
+
+    #[test]
+    fn test_get_theme_case_insensitive() {
+        assert_eq!(get_theme("MODERN").name, "modern");
+        assert_eq!(get_theme("Modern").name, "modern");
+        assert_eq!(get_theme("TERMINAL").name, "terminal");
+        assert_eq!(get_theme("HighContrast").name, "highcontrast");
+    }
+
+    #[test]
+    fn test_get_theme_unknown_fallback() {
+        assert_eq!(get_theme("unknown").name, "modern");
+        assert_eq!(get_theme("").name, "modern");
+        assert_eq!(get_theme("nonexistent").name, "modern");
+    }
+
+    #[test]
+    fn test_list_themes() {
+        let themes = list_themes();
+        assert_eq!(themes.len(), 8);
+        assert!(themes.contains(&"modern"));
+        assert!(themes.contains(&"terminal"));
+        assert!(themes.contains(&"paperwhite"));
+        assert!(themes.contains(&"ocean"));
+        assert!(themes.contains(&"midnight"));
+        assert!(themes.contains(&"amber"));
+        assert!(themes.contains(&"solarized"));
+        assert!(themes.contains(&"highcontrast"));
+    }
+
+    #[test]
+    fn test_theme_default() {
+        let theme = Theme::default();
+        assert_eq!(theme.name, "modern");
+    }
+
+    #[test]
+    fn test_theme_has_required_fields() {
+        for theme_name in list_themes() {
+            let theme = get_theme(theme_name);
+            assert!(!theme.bg.is_empty(), "{} should have bg", theme_name);
+            assert!(!theme.fg.is_empty(), "{} should have fg", theme_name);
+            assert!(!theme.link.is_empty(), "{} should have link", theme_name);
+            assert!(!theme.font.is_empty(), "{} should have font", theme_name);
+        }
+    }
+
+    #[test]
+    fn test_high_contrast_has_larger_font() {
+        let theme = get_theme("highcontrast");
+        assert!(theme.font_size.is_some());
+        assert_eq!(theme.font_size, Some("18px"));
+    }
+}

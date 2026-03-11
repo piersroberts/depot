@@ -458,3 +458,128 @@ fn guess_content_type(path: &str) -> &'static str {
         _ => "application/octet-stream",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_url_encode_path_simple() {
+        assert_eq!(url_encode_path("/foo/bar"), "/foo/bar");
+        assert_eq!(url_encode_path("/"), "/");
+        assert_eq!(url_encode_path("/a/b/c"), "/a/b/c");
+    }
+
+    #[test]
+    fn test_url_encode_path_spaces() {
+        assert_eq!(url_encode_path("/my files/test"), "/my%20files/test");
+        assert_eq!(url_encode_path("/a b/c d"), "/a%20b/c%20d");
+    }
+
+    #[test]
+    fn test_url_encode_path_special_chars() {
+        assert_eq!(url_encode_path("/foo&bar"), "/foo%26bar");
+        assert_eq!(url_encode_path("/test?query"), "/test%3Fquery");
+        assert_eq!(url_encode_path("/hash#tag"), "/hash%23tag");
+    }
+
+    #[test]
+    fn test_get_parent_path_root() {
+        assert_eq!(get_parent_path("/"), "/");
+    }
+
+    #[test]
+    fn test_get_parent_path_single_level() {
+        assert_eq!(get_parent_path("/foo"), "/");
+        assert_eq!(get_parent_path("/bar/"), "/");
+    }
+
+    #[test]
+    fn test_get_parent_path_nested() {
+        assert_eq!(get_parent_path("/foo/bar"), "/foo");
+        assert_eq!(get_parent_path("/a/b/c"), "/a/b");
+        assert_eq!(get_parent_path("/deep/nested/path/file"), "/deep/nested/path");
+    }
+
+    #[test]
+    fn test_get_parent_path_trailing_slash() {
+        assert_eq!(get_parent_path("/foo/bar/"), "/foo");
+        assert_eq!(get_parent_path("/a/b/c/"), "/a/b");
+    }
+
+    #[test]
+    fn test_guess_content_type_text() {
+        assert_eq!(guess_content_type("file.txt"), "text/plain");
+        assert_eq!(guess_content_type("index.html"), "text/html");
+        assert_eq!(guess_content_type("page.htm"), "text/html");
+        assert_eq!(guess_content_type("style.css"), "text/css");
+        assert_eq!(guess_content_type("script.js"), "application/javascript");
+        assert_eq!(guess_content_type("data.json"), "application/json");
+    }
+
+    #[test]
+    fn test_guess_content_type_images() {
+        assert_eq!(guess_content_type("photo.jpg"), "image/jpeg");
+        assert_eq!(guess_content_type("photo.jpeg"), "image/jpeg");
+        assert_eq!(guess_content_type("image.png"), "image/png");
+        assert_eq!(guess_content_type("animation.gif"), "image/gif");
+        assert_eq!(guess_content_type("icon.ico"), "image/x-icon");
+    }
+
+    #[test]
+    fn test_guess_content_type_audio() {
+        assert_eq!(guess_content_type("music.mp3"), "audio/mpeg");
+        assert_eq!(guess_content_type("sound.wav"), "audio/wav");
+        assert_eq!(guess_content_type("track.ogg"), "audio/ogg");
+        assert_eq!(guess_content_type("lossless.flac"), "audio/flac");
+    }
+
+    #[test]
+    fn test_guess_content_type_video() {
+        assert_eq!(guess_content_type("movie.mp4"), "video/mp4");
+        assert_eq!(guess_content_type("clip.avi"), "video/x-msvideo");
+        assert_eq!(guess_content_type("video.mkv"), "video/x-matroska");
+    }
+
+    #[test]
+    fn test_guess_content_type_archives() {
+        assert_eq!(guess_content_type("archive.zip"), "application/zip");
+        assert_eq!(guess_content_type("data.tar"), "application/x-tar");
+        assert_eq!(guess_content_type("compressed.gz"), "application/gzip");
+        assert_eq!(guess_content_type("archive.7z"), "application/x-7z-compressed");
+    }
+
+    #[test]
+    fn test_guess_content_type_unknown() {
+        assert_eq!(guess_content_type("file.xyz"), "application/octet-stream");
+        assert_eq!(guess_content_type("noextension"), "application/octet-stream");
+        assert_eq!(guess_content_type(".hidden"), "application/octet-stream");
+    }
+
+    #[test]
+    fn test_guess_content_type_case_insensitive() {
+        assert_eq!(guess_content_type("FILE.TXT"), "text/plain");
+        assert_eq!(guess_content_type("IMAGE.PNG"), "image/png");
+        assert_eq!(guess_content_type("Music.MP3"), "audio/mpeg");
+    }
+
+    #[test]
+    fn test_base64_decode_simple() {
+        assert_eq!(base64_decode("SGVsbG8=").unwrap(), "Hello");
+        assert_eq!(base64_decode("V29ybGQ=").unwrap(), "World");
+    }
+
+    #[test]
+    fn test_base64_decode_basic_auth() {
+        // "user:password" encoded
+        assert_eq!(base64_decode("dXNlcjpwYXNzd29yZA==").unwrap(), "user:password");
+        // "admin:secret123" encoded
+        assert_eq!(base64_decode("YWRtaW46c2VjcmV0MTIz").unwrap(), "admin:secret123");
+    }
+
+    #[test]
+    fn test_base64_decode_no_padding() {
+        // base64_decode handles strings without padding
+        assert_eq!(base64_decode("SGVsbG8").unwrap(), "Hello");
+    }
+}
