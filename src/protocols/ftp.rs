@@ -53,7 +53,7 @@ impl FtpServer {
         let users = self.users.clone();
         let passive_start = self.config.passive_port_start;
         let passive_end = self.config.passive_port_end;
-        
+
         let server = libunftp::ServerBuilder::with_authenticator(
             Box::new(move || VfsStorageBackend::new(vfs.clone())),
             Arc::new(VfsAuthenticator::new(allow_anonymous, users)),
@@ -61,7 +61,7 @@ impl FtpServer {
         .greeting(banner)
         .passive_ports(passive_start..passive_end)
         .build()?;
-        
+
         Ok(server)
     }
 }
@@ -272,10 +272,7 @@ impl StorageBackend<DefaultUser> for VfsStorageBackend {
         Ok(Box::new(file))
     }
 
-    async fn put<
-        P: AsRef<Path> + Send + Debug,
-        R: AsyncRead + Send + Sync + Unpin + 'static,
-    >(
+    async fn put<P: AsRef<Path> + Send + Debug, R: AsyncRead + Send + Sync + Unpin + 'static>(
         &self,
         _user: &DefaultUser,
         _input: R,
@@ -334,13 +331,9 @@ impl StorageBackend<DefaultUser> for VfsStorageBackend {
         ))
     }
 
-    async fn cwd<P: AsRef<Path> + Send + Debug>(
-        &self,
-        _user: &DefaultUser,
-        path: P,
-    ) -> Result<()> {
+    async fn cwd<P: AsRef<Path> + Send + Debug>(&self, _user: &DefaultUser, path: P) -> Result<()> {
         let path_str = path.as_ref().to_string_lossy();
-        
+
         if self.vfs.is_dir(&path_str).await {
             Ok(())
         } else {

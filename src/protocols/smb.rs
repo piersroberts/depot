@@ -110,16 +110,16 @@ mod flags2 {
 #[derive(Debug, Clone)]
 pub struct SmbHeader {
     pub command: u8,
-    pub status: u32,           // NT_STATUS or DOS error
+    pub status: u32, // NT_STATUS or DOS error
     pub flags: u8,
     pub flags2: u16,
     pub pid_high: u16,
-    pub signature: [u8; 8],    // Security signature (usually zeros)
+    pub signature: [u8; 8], // Security signature (usually zeros)
     pub reserved: u16,
-    pub tid: u16,              // Tree ID (share connection)
-    pub pid_low: u16,          // Process ID
-    pub uid: u16,              // User ID (session)
-    pub mid: u16,              // Multiplex ID (request/response matching)
+    pub tid: u16,     // Tree ID (share connection)
+    pub pid_low: u16, // Process ID
+    pub uid: u16,     // User ID (session)
+    pub mid: u16,     // Multiplex ID (request/response matching)
 }
 
 impl SmbHeader {
@@ -141,10 +141,16 @@ impl SmbHeader {
 
     pub fn parse(data: &[u8]) -> io::Result<Self> {
         if data.len() < 32 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Header too short"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Header too short",
+            ));
         }
         if &data[0..4] != &SMB_MAGIC {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid SMB magic"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid SMB magic",
+            ));
         }
 
         let mut signature = [0u8; 8];
@@ -191,22 +197,28 @@ impl SmbHeader {
 #[derive(Debug)]
 pub struct SmbMessage {
     pub header: SmbHeader,
-    pub params: Vec<u8>,      // Parameter words (word_count * 2 bytes)
-    pub data: Vec<u8>,        // Data bytes
+    pub params: Vec<u8>, // Parameter words (word_count * 2 bytes)
+    pub data: Vec<u8>,   // Data bytes
 }
 
 impl SmbMessage {
     pub fn parse(data: &[u8]) -> io::Result<Self> {
         if data.len() < 35 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Message too short"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Message too short",
+            ));
         }
 
         let header = SmbHeader::parse(data)?;
         let word_count = data[32] as usize;
         let params_end = 33 + word_count * 2;
-        
+
         if data.len() < params_end + 2 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Params truncated"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Params truncated",
+            ));
         }
 
         let params = data[33..params_end].to_vec();
@@ -324,7 +336,7 @@ fn build_vfs_path(share_root: &str, client_path: &str) -> String {
     let normalized = client_path.replace('\\', "/");
     let client_clean = normalized.trim_start_matches('/');
     let share_clean = share_root.trim_start_matches('/');
-    
+
     // If client path starts with share root, strip it
     let relative_path = if !share_clean.is_empty() && client_clean.starts_with(share_clean) {
         let remainder = &client_clean[share_clean.len()..];
@@ -332,7 +344,7 @@ fn build_vfs_path(share_root: &str, client_path: &str) -> String {
     } else {
         client_clean
     };
-    
+
     // Build full path
     if relative_path.is_empty() {
         share_root.to_string()
@@ -374,12 +386,12 @@ impl SmbServer {
         peer_addr: std::net::SocketAddr,
     ) {
         tracing::info!("SMB connection from {}", peer_addr);
-        
+
         // Enable TCP_NODELAY for low latency (disable Nagle's algorithm)
         if let Err(e) = stream.set_nodelay(true) {
             tracing::warn!("Failed to set TCP_NODELAY: {}", e);
         }
-        
+
         let state = Arc::new(RwLock::new(SessionState::new()));
         let mut negotiated = false;
 
@@ -394,7 +406,10 @@ impl SmbServer {
             // - Byte 0: Message type (0x00 = session message)
             // - Bytes 1-3: Length (24-bit big-endian)
             if netbios_header[0] != NETBIOS_SESSION_MESSAGE {
-                tracing::warn!("Unexpected NetBIOS message type: 0x{:02X}", netbios_header[0]);
+                tracing::warn!(
+                    "Unexpected NetBIOS message type: 0x{:02X}",
+                    netbios_header[0]
+                );
                 continue;
             }
 
@@ -439,36 +454,18 @@ impl SmbServer {
                 commands::SMB_COM_SESSION_SETUP_ANDX => {
                     self.handle_session_setup(&msg, &state).await
                 }
-                commands::SMB_COM_TREE_CONNECT_ANDX => {
-                    self.handle_tree_connect(&msg, &state).await
-                }
+                commands::SMB_COM_TREE_CONNECT_ANDX => self.handle_tree_connect(&msg, &state).await,
                 commands::SMB_COM_TREE_DISCONNECT => {
                     self.handle_tree_disconnect(&msg, &state).await
                 }
-                commands::SMB_COM_NT_CREATE_ANDX => {
-                    self.handle_nt_create(&msg, &state).await
-                }
-                commands::SMB_COM_READ_ANDX => {
-                    self.handle_read(&msg, &state).await
-                }
-                commands::SMB_COM_CLOSE => {
-                    self.handle_close(&msg, &state).await
-                }
-                commands::SMB_COM_TRANSACTION2 => {
-                    self.handle_trans2(&msg, &state).await
-                }
-                commands::SMB_COM_FIND_CLOSE2 => {
-                    self.handle_find_close2(&msg, &state).await
-                }
-                commands::SMB_COM_ECHO => {
-                    self.handle_echo(&msg).await
-                }
-                commands::SMB_COM_LOGOFF_ANDX => {
-                    self.handle_logoff(&msg, &state).await
-                }
-                commands::SMB_COM_NT_TRANSACT => {
-                    self.handle_nt_transact(&msg, &state).await
-                }
+                commands::SMB_COM_NT_CREATE_ANDX => self.handle_nt_create(&msg, &state).await,
+                commands::SMB_COM_READ_ANDX => self.handle_read(&msg, &state).await,
+                commands::SMB_COM_CLOSE => self.handle_close(&msg, &state).await,
+                commands::SMB_COM_TRANSACTION2 => self.handle_trans2(&msg, &state).await,
+                commands::SMB_COM_FIND_CLOSE2 => self.handle_find_close2(&msg, &state).await,
+                commands::SMB_COM_ECHO => self.handle_echo(&msg).await,
+                commands::SMB_COM_LOGOFF_ANDX => self.handle_logoff(&msg, &state).await,
+                commands::SMB_COM_NT_TRANSACT => self.handle_nt_transact(&msg, &state).await,
                 cmd => {
                     tracing::warn!("Unhandled SMB command: 0x{:02X}", cmd);
                     self.error_response(&msg, status::STATUS_NOT_IMPLEMENTED)
@@ -516,7 +513,7 @@ impl SmbServer {
         // Build NEGOTIATE response (MS-SMB 2.2.4.5.2.1)
         // We're using the non-extended security response for simplicity
         let mut params = Vec::with_capacity(34);
-        
+
         // DialectIndex (2 bytes)
         params.extend_from_slice(&dialect_index.to_le_bytes());
         // SecurityMode (1 byte) - User level security, no signatures
@@ -582,8 +579,8 @@ impl SmbServer {
 
         // Response: AndXCommand, Reserved, AndXOffset, Action (MS-SMB 2.2.4.6.2)
         let params = vec![
-            0xFF,       // AndXCommand: none
-            0x00,       // Reserved
+            0xFF, // AndXCommand: none
+            0x00, // Reserved
             0x00, 0x00, // AndXOffset
             0x01, 0x00, // Action: logged in as guest
         ];
@@ -624,7 +621,7 @@ impl SmbServer {
         // Parse TREE_CONNECT_ANDX request
         // Params: AndXCommand(1), Reserved(1), AndXOffset(2), Flags(2), PasswordLength(2)
         // Data: Password(PasswordLength), Path(null-term), Service(null-term)
-        
+
         let password_length = if request.params.len() >= 8 {
             u16::from_le_bytes([request.params[6], request.params[7]]) as usize
         } else {
@@ -634,7 +631,7 @@ impl SmbServer {
         // Skip password bytes to get to path
         // Note: SMB1 Unicode strings start at odd offsets when password length is odd
         let path_start = password_length;
-        
+
         // Parse share path - format: \\server\share
         let share_path = if request.header.is_unicode() && path_start < request.data.len() {
             parse_unicode_string(&request.data[path_start..])
@@ -644,11 +641,18 @@ impl SmbServer {
             String::new()
         };
 
-        tracing::debug!("TREE_CONNECT to: {} (pw_len={}, data_len={})", 
-            share_path, password_length, request.data.len());
-        
+        tracing::debug!(
+            "TREE_CONNECT to: {} (pw_len={}, data_len={})",
+            share_path,
+            password_length,
+            request.data.len()
+        );
+
         // Debug: hex dump first 50 bytes
-        let hex: String = request.data.iter().take(50)
+        let hex: String = request
+            .data
+            .iter()
+            .take(50)
             .map(|b| format!("{:02x}", b))
             .collect::<Vec<_>>()
             .join(" ");
@@ -679,8 +683,8 @@ impl SmbServer {
 
         // Response parameters
         let params = vec![
-            0xFF,       // AndXCommand: none
-            0x00,       // Reserved
+            0xFF, // AndXCommand: none
+            0x00, // Reserved
             0x00, 0x00, // AndXOffset
             0x01, 0x00, // OptionalSupport: SMB_SUPPORT_SEARCH_BITS
             0x00, 0x00, 0x00, 0x00, // MaximalShareAccessRights (read-only)
@@ -689,8 +693,8 @@ impl SmbServer {
 
         // Data: Service type + Native filesystem
         let mut data = Vec::new();
-        data.extend_from_slice(b"A:\0");     // Service: disk share
-        data.extend_from_slice(b"NTFS\0");   // Filesystem
+        data.extend_from_slice(b"A:\0"); // Service: disk share
+        data.extend_from_slice(b"NTFS\0"); // Filesystem
 
         let mut header = SmbHeader::new_response(&request.header, status::STATUS_SUCCESS);
         header.tid = tid;
@@ -709,7 +713,7 @@ impl SmbServer {
         state: &Arc<RwLock<SessionState>>,
     ) -> SmbMessage {
         let tid = request.header.tid;
-        
+
         {
             let mut state = state.write().await;
             state.trees.remove(&tid);
@@ -800,7 +804,7 @@ impl SmbServer {
         params.push(0x00); // OplockLevel: none
         params.extend_from_slice(&fid.to_le_bytes()); // FID
         params.extend_from_slice(&1u32.to_le_bytes()); // CreateAction: file opened
-        
+
         // CreationTime, LastAccessTime, LastWriteTime, ChangeTime (8 bytes each)
         let filetime = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -813,12 +817,12 @@ impl SmbServer {
         // ExtFileAttributes (4 bytes)
         let attrs: u32 = if metadata.is_dir { 0x10 } else { 0x20 }; // Directory or Archive
         params.extend_from_slice(&attrs.to_le_bytes());
-        
+
         // AllocationSize (8 bytes)
         params.extend_from_slice(&metadata.size.to_le_bytes());
         // EndOfFile (8 bytes)
         params.extend_from_slice(&metadata.size.to_le_bytes());
-        
+
         // FileType (2 bytes) - disk file
         params.extend_from_slice(&0u16.to_le_bytes());
         // DeviceState (2 bytes)
@@ -855,7 +859,12 @@ impl SmbServer {
         ]) as u64;
         let max_count = u16::from_le_bytes([request.params[10], request.params[11]]) as usize;
 
-        tracing::debug!("READ_ANDX: fid={}, offset={}, max={}", fid, offset, max_count);
+        tracing::debug!(
+            "READ_ANDX: fid={}, offset={}, max={}",
+            fid,
+            offset,
+            max_count
+        );
 
         // Get cached physical path from state (resolved once at NT_CREATE)
         let physical_path = {
@@ -947,17 +956,18 @@ impl SmbServer {
             trans2::TRANS2_FIND_FIRST2 => {
                 self.handle_find_first2(request, state, param_offset).await
             }
-            trans2::TRANS2_FIND_NEXT2 => {
-                self.handle_find_next2(request, state).await
-            }
+            trans2::TRANS2_FIND_NEXT2 => self.handle_find_next2(request, state).await,
             trans2::TRANS2_QUERY_FS_INFO => {
-                self.handle_query_fs_info(request, state, param_offset).await
+                self.handle_query_fs_info(request, state, param_offset)
+                    .await
             }
             trans2::TRANS2_QUERY_PATH_INFO => {
-                self.handle_query_path_info(request, state, param_offset).await
+                self.handle_query_path_info(request, state, param_offset)
+                    .await
             }
             trans2::TRANS2_QUERY_FILE_INFO => {
-                self.handle_query_file_info(request, state, param_offset).await
+                self.handle_query_file_info(request, state, param_offset)
+                    .await
             }
             _ => {
                 tracing::warn!("Unhandled TRANS2 subcommand: 0x{:04X}", subcommand);
@@ -979,7 +989,7 @@ impl SmbServer {
         let word_count = (request.params.len() / 2) as usize;
         let data_start_offset = 32 + 1 + (word_count * 2) + 2;
         let relative_offset = param_offset.saturating_sub(data_start_offset);
-        
+
         // TRANS2_FIND_FIRST2 parameters are in request.data at relative_offset
         // Format:
         // - SearchAttributes (2 bytes)
@@ -988,9 +998,9 @@ impl SmbServer {
         // - InformationLevel (2 bytes)
         // - SearchStorageType (4 bytes)
         // - FileName (variable, null-terminated)
-        
+
         let params_data = &request.data[relative_offset..];
-        
+
         if params_data.len() < 12 {
             return self.error_response(request, status::STATUS_INVALID_SMB);
         }
@@ -1000,21 +1010,33 @@ impl SmbServer {
         let flags = u16::from_le_bytes([params_data[4], params_data[5]]);
         let info_level = u16::from_le_bytes([params_data[6], params_data[7]]);
         // SearchStorageType at bytes 8-11
-        
+
         // Parse search pattern (starts at byte 12)
         let pattern = if request.header.is_unicode() {
             // May need padding for alignment - check if byte 12 is a null padding byte
-            let start = if params_data.len() > 12 && params_data[12] == 0 { 13 } else { 12 };
+            let start = if params_data.len() > 12 && params_data[12] == 0 {
+                13
+            } else {
+                12
+            };
             parse_unicode_string(&params_data[start..])
         } else {
             parse_ascii_string(&params_data[12..])
         };
 
         // Default empty pattern to '*'
-        let pattern = if pattern.is_empty() { "*".to_string() } else { pattern };
-        
-        tracing::debug!("FIND_FIRST2: pattern='{}', info_level=0x{:04X}, max={}", 
-            pattern, info_level, max_count);
+        let pattern = if pattern.is_empty() {
+            "*".to_string()
+        } else {
+            pattern
+        };
+
+        tracing::debug!(
+            "FIND_FIRST2: pattern='{}', info_level=0x{:04X}, max={}",
+            pattern,
+            info_level,
+            max_count
+        );
 
         // Convert pattern to directory path
         // Pattern is like "\\*" or "\\subdir\\*" or "\\subdir\\*.mp3"
@@ -1039,7 +1061,11 @@ impl SmbServer {
 
         let full_dir = build_vfs_path(&share_root, dir_path);
 
-        tracing::debug!("FIND_FIRST2: listing dir='{}', pattern='{}'", full_dir, file_pattern);
+        tracing::debug!(
+            "FIND_FIRST2: listing dir='{}', pattern='{}'",
+            full_dir,
+            file_pattern
+        );
 
         // List directory via VFS
         let entries = match self.vfs.list_dir(&full_dir).await {
@@ -1073,22 +1099,28 @@ impl SmbServer {
         }
 
         // Format entries and split into first batch + remaining
-        let (entry_data, returned_count, last_offset) = 
-            format_find_entries(&filtered[..filtered.len().min(max_count)], info_level, request.header.is_unicode());
-        
+        let (entry_data, returned_count, last_offset) = format_find_entries(
+            &filtered[..filtered.len().min(max_count)],
+            info_level,
+            request.header.is_unicode(),
+        );
+
         let end_of_search = returned_count >= filtered.len();
-        
+
         // If there are more entries, store search handle
         let sid = if !end_of_search {
             let remaining: Vec<VfsDirEntry> = filtered.into_iter().skip(returned_count).collect();
             let mut state = state.write().await;
             let sid = state.allocate_sid();
-            state.searches.insert(sid, SearchHandle {
-                directory_path: full_dir,
-                entries: remaining,
-                info_level,
-                flags,
-            });
+            state.searches.insert(
+                sid,
+                SearchHandle {
+                    directory_path: full_dir,
+                    entries: remaining,
+                    info_level,
+                    flags,
+                },
+            );
             sid
         } else {
             0 // No search handle needed
@@ -1120,7 +1152,7 @@ impl SmbServer {
         // - ResumeKey (4 bytes)
         // - Flags (2 bytes)
         // - FileName (variable)
-        
+
         if request.data.len() < 12 {
             return self.error_response(request, status::STATUS_INVALID_SMB);
         }
@@ -1161,7 +1193,7 @@ impl SmbServer {
             };
         }
 
-        let (entry_data, returned_count, last_offset) = 
+        let (entry_data, returned_count, last_offset) =
             format_find_entries(&entries, info_level, request.header.is_unicode());
 
         // Parameters: SearchCount(2) + EndOfSearch(2) + EaErrorOffset(2) + LastNameOffset(2)
@@ -1184,7 +1216,9 @@ impl SmbServer {
         // Get share name from tree connection for volume label
         let share_label = {
             let state = state.read().await;
-            state.trees.get(&request.header.tid)
+            state
+                .trees
+                .get(&request.header.tid)
                 .map(|t| t.share_name.clone())
                 .unwrap_or_else(|| "SHARE".to_string())
         };
@@ -1193,9 +1227,9 @@ impl SmbServer {
         let word_count = (request.params.len() / 2) as usize;
         let data_start_offset = 32 + 1 + (word_count * 2) + 2;
         let relative_offset = param_offset.saturating_sub(data_start_offset);
-        
+
         let params_data = &request.data[relative_offset..];
-        
+
         // Parameters:
         // - InformationLevel (2 bytes)
         if params_data.len() < 2 {
@@ -1244,7 +1278,8 @@ impl SmbServer {
             0x0104 => {
                 // SMB_QUERY_FS_ATTRIBUTE_INFO - Filesystem attributes
                 let name = "NTFS"; // Pretend to be NTFS for compatibility
-                let name_bytes: Vec<u8> = name.encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
+                let name_bytes: Vec<u8> =
+                    name.encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
                 let mut d = Vec::with_capacity(12 + name_bytes.len());
                 d.extend_from_slice(&0x0000001Fu32.to_le_bytes()); // FileSystemAttributes
                 d.extend_from_slice(&255u32.to_le_bytes()); // MaxFileNameLengthInBytes
@@ -1254,7 +1289,10 @@ impl SmbServer {
             }
             0x0105 => {
                 // SMB_QUERY_FS_VOLUME_INFO - Volume info (NT style)
-                let label_bytes: Vec<u8> = share_label.encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
+                let label_bytes: Vec<u8> = share_label
+                    .encode_utf16()
+                    .flat_map(|c| c.to_le_bytes())
+                    .collect();
                 let mut d = Vec::with_capacity(18 + label_bytes.len());
                 d.extend_from_slice(&0u64.to_le_bytes()); // VolumeCreationTime
                 d.extend_from_slice(&0u32.to_le_bytes()); // VolumeSerialNumber
@@ -1265,7 +1303,10 @@ impl SmbServer {
             }
             _ => {
                 // Default: return SMB_INFO_ALLOCATION for unknown levels
-                tracing::debug!("Unknown FS info level 0x{:04X}, using ALLOCATION", info_level);
+                tracing::debug!(
+                    "Unknown FS info level 0x{:04X}, using ALLOCATION",
+                    info_level
+                );
                 let mut d = Vec::with_capacity(18);
                 d.extend_from_slice(&0u32.to_le_bytes());
                 d.extend_from_slice(&4096u32.to_le_bytes());
@@ -1290,32 +1331,40 @@ impl SmbServer {
         let word_count = (request.params.len() / 2) as usize;
         let data_start_offset = 32 + 1 + (word_count * 2) + 2;
         let relative_offset = param_offset.saturating_sub(data_start_offset);
-        
+
         let params_data = &request.data[relative_offset..];
-        
+
         // Parameters:
         // - InformationLevel (2 bytes)
         // - Reserved (4 bytes)
         // - FileName (variable)
-        
+
         if params_data.len() < 6 {
             return self.error_response(request, status::STATUS_INVALID_SMB);
         }
 
         let info_level = u16::from_le_bytes([params_data[0], params_data[1]]);
         // Reserved bytes 2-5
-        
+
         let filename = if request.header.is_unicode() {
             // Pad byte for unicode alignment
-            let start = if params_data.len() > 6 && params_data[6] == 0 { 7 } else { 6 };
+            let start = if params_data.len() > 6 && params_data[6] == 0 {
+                7
+            } else {
+                6
+            };
             parse_unicode_string(&params_data[start..])
         } else {
             parse_ascii_string(&params_data[6..])
         };
 
         let virtual_path = filename.replace('\\', "/");
-        
-        tracing::debug!("QUERY_PATH_INFO: path='{}', level=0x{:04X}", virtual_path, info_level);
+
+        tracing::debug!(
+            "QUERY_PATH_INFO: path='{}', level=0x{:04X}",
+            virtual_path,
+            info_level
+        );
 
         // Get share root
         let share_root = {
@@ -1340,7 +1389,7 @@ impl SmbServer {
 
         // Format response based on info level
         let data = format_path_info(&metadata, info_level);
-        
+
         self.build_trans2_response(request, vec![], data)
     }
 
@@ -1357,20 +1406,31 @@ impl SmbServer {
         let word_count = (request.params.len() / 2) as usize;
         let data_start_offset = 32 + 1 + (word_count * 2) + 2;
         let relative_offset = param_offset.saturating_sub(data_start_offset);
-        
+
         // Parameters in Trans2_Parameters:
         // - FID (2 bytes)
         // - InformationLevel (2 bytes)
-        
+
         if request.data.len() < relative_offset + 4 {
             return self.error_response(request, status::STATUS_INVALID_SMB);
         }
 
-        let fid = u16::from_le_bytes([request.data[relative_offset], request.data[relative_offset + 1]]);
-        let info_level = u16::from_le_bytes([request.data[relative_offset + 2], request.data[relative_offset + 3]]);
+        let fid = u16::from_le_bytes([
+            request.data[relative_offset],
+            request.data[relative_offset + 1],
+        ]);
+        let info_level = u16::from_le_bytes([
+            request.data[relative_offset + 2],
+            request.data[relative_offset + 3],
+        ]);
 
-        tracing::debug!("QUERY_FILE_INFO: fid={}, level=0x{:04X}, param_offset={}, relative={}", 
-            fid, info_level, param_offset, relative_offset);
+        tracing::debug!(
+            "QUERY_FILE_INFO: fid={}, level=0x{:04X}, param_offset={}, relative={}",
+            fid,
+            info_level,
+            param_offset,
+            relative_offset
+        );
 
         // Get cached physical path from state (fast path)
         let (virtual_path, physical_path) = {
@@ -1381,8 +1441,12 @@ impl SmbServer {
             }
         };
 
-        tracing::debug!("QUERY_FILE_INFO: fid={}, path='{}', level=0x{:04X}", 
-            fid, virtual_path, info_level);
+        tracing::debug!(
+            "QUERY_FILE_INFO: fid={}, path='{}', level=0x{:04X}",
+            fid,
+            virtual_path,
+            info_level
+        );
 
         // Get metadata directly from filesystem (bypassing VFS for speed)
         let fs_meta = match tokio::fs::metadata(&physical_path).await {
@@ -1395,7 +1459,8 @@ impl SmbServer {
 
         // Convert to VfsMetadata format
         let metadata = crate::vfs::VfsMetadata {
-            name: physical_path.file_name()
+            name: physical_path
+                .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default(),
             size: fs_meta.len(),
@@ -1410,7 +1475,12 @@ impl SmbServer {
     }
 
     /// Build a TRANS2 response message
-    fn build_trans2_response(&self, request: &SmbMessage, params: Vec<u8>, data: Vec<u8>) -> SmbMessage {
+    fn build_trans2_response(
+        &self,
+        request: &SmbMessage,
+        params: Vec<u8>,
+        data: Vec<u8>,
+    ) -> SmbMessage {
         // TRANS2 response format (MS-SMB 2.2.6.1.2):
         // Word Count = 10 + SetupCount
         // TotalParameterCount (2)
@@ -1424,10 +1494,10 @@ impl SmbServer {
         // DataDisplacement (2)
         // SetupCount (1)
         // Reserved2 (1)
-        
+
         let param_len = params.len() as u16;
         let data_len = data.len() as u16;
-        
+
         // Calculate offsets (header=32, word_count=1, words=20, byte_count=2)
         let param_offset: u16 = 32 + 1 + 20 + 2; // 55
         let data_offset: u16 = param_offset + param_len;
@@ -1536,56 +1606,56 @@ impl SmbServer {
         // - Sbz1 (1 byte): 0
         // - Control (2 bytes): SE_SELF_RELATIVE (0x8000) | SE_DACL_PRESENT (0x0004)
         // - OffsetOwner (4 bytes): offset to owner SID
-        // - OffsetGroup (4 bytes): offset to group SID  
+        // - OffsetGroup (4 bytes): offset to group SID
         // - OffsetSacl (4 bytes): 0 (no SACL)
         // - OffsetDacl (4 bytes): offset to DACL
         // Then: DACL, Owner SID, Group SID
 
         // Minimal security descriptor with Everyone (S-1-1-0) having read access
         let mut sd = Vec::new();
-        
+
         // Header (20 bytes)
-        sd.push(1);    // Revision
-        sd.push(0);    // Sbz1
+        sd.push(1); // Revision
+        sd.push(0); // Sbz1
         sd.extend_from_slice(&0x8004u16.to_le_bytes()); // Control: SE_SELF_RELATIVE | SE_DACL_PRESENT
-        sd.extend_from_slice(&48u32.to_le_bytes());     // OffsetOwner (after DACL)
-        sd.extend_from_slice(&60u32.to_le_bytes());     // OffsetGroup (after Owner)
-        sd.extend_from_slice(&0u32.to_le_bytes());      // OffsetSacl (none)
-        sd.extend_from_slice(&20u32.to_le_bytes());     // OffsetDacl (right after header)
-        
+        sd.extend_from_slice(&48u32.to_le_bytes()); // OffsetOwner (after DACL)
+        sd.extend_from_slice(&60u32.to_le_bytes()); // OffsetGroup (after Owner)
+        sd.extend_from_slice(&0u32.to_le_bytes()); // OffsetSacl (none)
+        sd.extend_from_slice(&20u32.to_le_bytes()); // OffsetDacl (right after header)
+
         // DACL (28 bytes at offset 20)
         // ACL header (8 bytes)
-        sd.push(2);    // AclRevision
-        sd.push(0);    // Sbz1
+        sd.push(2); // AclRevision
+        sd.push(0); // Sbz1
         sd.extend_from_slice(&28u16.to_le_bytes()); // AclSize (8 header + 20 ACE)
-        sd.extend_from_slice(&1u16.to_le_bytes());  // AceCount
-        sd.extend_from_slice(&0u16.to_le_bytes());  // Sbz2
-        
+        sd.extend_from_slice(&1u16.to_le_bytes()); // AceCount
+        sd.extend_from_slice(&0u16.to_le_bytes()); // Sbz2
+
         // ACCESS_ALLOWED_ACE for Everyone (S-1-1-0) with read access
         // ACE header (4 bytes) + Mask (4 bytes) + SID (8 bytes) = 16 bytes... wait
         // Actually ACE is: Type(1) + Flags(1) + Size(2) + Mask(4) + SID
         // Everyone SID (S-1-1-0) = 8 bytes
-        sd.push(0);    // AceType: ACCESS_ALLOWED_ACE_TYPE
-        sd.push(0);    // AceFlags
+        sd.push(0); // AceType: ACCESS_ALLOWED_ACE_TYPE
+        sd.push(0); // AceFlags
         sd.extend_from_slice(&20u16.to_le_bytes()); // AceSize (4 header + 4 mask + 12 SID)
         sd.extend_from_slice(&0x001200A9u32.to_le_bytes()); // AccessMask: READ_CONTROL | SYNCHRONIZE | FILE_READ_*
-        
+
         // Everyone SID S-1-1-0 (12 bytes with padding for alignment)
-        sd.push(1);    // Revision
-        sd.push(1);    // SubAuthorityCount
+        sd.push(1); // Revision
+        sd.push(1); // SubAuthorityCount
         sd.extend_from_slice(&[0, 0, 0, 0, 0, 1]); // IdentifierAuthority (WORLD)
         sd.extend_from_slice(&0u32.to_le_bytes()); // SubAuthority[0] = 0
-        
+
         // Owner SID: S-1-5-32-544 (Administrators) - 16 bytes at offset 48
-        sd.push(1);    // Revision
-        sd.push(2);    // SubAuthorityCount
+        sd.push(1); // Revision
+        sd.push(2); // SubAuthorityCount
         sd.extend_from_slice(&[0, 0, 0, 0, 0, 5]); // IdentifierAuthority (NT)
         sd.extend_from_slice(&32u32.to_le_bytes()); // SubAuthority[0] = BUILTIN
         sd.extend_from_slice(&544u32.to_le_bytes()); // SubAuthority[1] = Administrators
-        
-        // Group SID: S-1-5-32-544 (Administrators) - 16 bytes at offset 64  
-        sd.push(1);    // Revision
-        sd.push(2);    // SubAuthorityCount
+
+        // Group SID: S-1-5-32-544 (Administrators) - 16 bytes at offset 64
+        sd.push(1); // Revision
+        sd.push(2); // SubAuthorityCount
         sd.extend_from_slice(&[0, 0, 0, 0, 0, 5]); // IdentifierAuthority (NT)
         sd.extend_from_slice(&32u32.to_le_bytes()); // SubAuthority[0] = BUILTIN
         sd.extend_from_slice(&544u32.to_le_bytes()); // SubAuthority[1] = Administrators
@@ -1594,11 +1664,11 @@ impl SmbServer {
         // Response params: just the security descriptor length (4 bytes)
         let mut trans_params = Vec::new();
         trans_params.extend_from_slice(&(sd.len() as u32).to_le_bytes());
-        
+
         // Build response parameters (38 bytes for NT_TRANSACT response)
         let param_offset = 32 + 1 + 36 + 2; // SMB header + wordcount + params + bytecount = 71
         let data_offset = param_offset + trans_params.len();
-        
+
         let mut params = Vec::new();
         params.extend_from_slice(&[0u8; 3]); // Reserved
         params.extend_from_slice(&(trans_params.len() as u32).to_le_bytes()); // TotalParamCount
@@ -1610,11 +1680,11 @@ impl SmbServer {
         params.extend_from_slice(&(data_offset as u32).to_le_bytes()); // DataOffset
         params.extend_from_slice(&0u32.to_le_bytes()); // DataDisplacement
         params.push(0); // SetupCount
-        
+
         // Data section: trans_params + security descriptor
         let mut data = trans_params;
         data.extend_from_slice(&sd);
-        
+
         SmbMessage {
             header: SmbHeader::new_response(&request.header, status::STATUS_SUCCESS),
             params,
@@ -1636,8 +1706,8 @@ impl SmbServer {
         }
 
         let params = vec![
-            0xFF,       // AndXCommand: none
-            0x00,       // Reserved
+            0xFF, // AndXCommand: none
+            0x00, // Reserved
             0x00, 0x00, // AndXOffset
         ];
 
@@ -1667,16 +1737,16 @@ impl SmbServer {
         max_len: usize,
     ) -> io::Result<Vec<u8>> {
         use tokio::io::{AsyncReadExt, AsyncSeekExt};
-        
+
         let mut file = tokio::fs::File::open(physical_path).await?;
         file.seek(std::io::SeekFrom::Start(offset)).await?;
-        
+
         // Cap at 64KB per read for SMB1 compatibility
         let read_size = max_len.min(65536);
         let mut buffer = vec![0u8; read_size];
         let bytes_read = file.read(&mut buffer).await?;
         buffer.truncate(bytes_read);
-        
+
         Ok(buffer)
     }
 }
@@ -1808,13 +1878,13 @@ fn match_wildcard(pattern: &str, name: &str) -> bool {
     if pattern == "*" || pattern == "*.*" {
         return true;
     }
-    
+
     let pattern = pattern.to_lowercase();
     let name = name.to_lowercase();
-    
+
     let mut p_chars = pattern.chars().peekable();
     let mut n_chars = name.chars().peekable();
-    
+
     match_wildcard_recursive(&mut p_chars, &mut n_chars)
 }
 
@@ -1863,14 +1933,18 @@ fn systemtime_to_filetime(time: Option<std::time::SystemTime>) -> u64 {
 
 /// Format directory entries for FIND_FIRST2/FIND_NEXT2 response
 /// Returns (data, entry_count, last_name_offset)
-fn format_find_entries(entries: &[VfsDirEntry], info_level: u16, unicode: bool) -> (Vec<u8>, usize, usize) {
+fn format_find_entries(
+    entries: &[VfsDirEntry],
+    info_level: u16,
+    unicode: bool,
+) -> (Vec<u8>, usize, usize) {
     let mut data = Vec::new();
     let mut count = 0;
     let mut last_offset = 0;
-    
+
     // Common info levels:
     // 0x0001 = SMB_FIND_INFO_STANDARD
-    // 0x0101 = SMB_FIND_FILE_DIRECTORY_INFO  
+    // 0x0101 = SMB_FIND_FILE_DIRECTORY_INFO
     // 0x0102 = SMB_FIND_FILE_FULL_DIRECTORY_INFO
     // 0x0104 = SMB_FIND_FILE_BOTH_DIRECTORY_INFO (most common for XP)
     // 0x0605 = SMB_FIND_FILE_ID_BOTH_DIRECTORY_INFO (smbclient default)
@@ -1878,7 +1952,7 @@ fn format_find_entries(entries: &[VfsDirEntry], info_level: u16, unicode: bool) 
     for (i, entry) in entries.iter().enumerate() {
         let entry_start = data.len();
         last_offset = entry_start;
-        
+
         match info_level {
             0x0104 | 0x0605 => {
                 // SMB_FIND_FILE_BOTH_DIRECTORY_INFO (MS-SMB 2.2.8.1.4)
@@ -1899,76 +1973,84 @@ fn format_find_entries(entries: &[VfsDirEntry], info_level: u16, unicode: bool) 
             }
             _ => {
                 // Default to BOTH_DIRECTORY_INFO
-                tracing::warn!("Unknown info level 0x{:04X}, using BOTH_DIRECTORY_INFO", info_level);
+                tracing::warn!(
+                    "Unknown info level 0x{:04X}, using BOTH_DIRECTORY_INFO",
+                    info_level
+                );
                 format_both_directory_info(&mut data, entry, unicode, i == entries.len() - 1);
             }
         }
-        
+
         count += 1;
     }
-    
+
     (data, count, last_offset)
 }
 
 /// SMB_FIND_FILE_BOTH_DIRECTORY_INFO format (94 bytes + filename)
-fn format_both_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: bool, is_last: bool) {
+fn format_both_directory_info(
+    data: &mut Vec<u8>,
+    entry: &VfsDirEntry,
+    unicode: bool,
+    is_last: bool,
+) {
     let entry_start = data.len();
-    
+
     // NextEntryOffset (4 bytes) - will be filled in after
     data.extend_from_slice(&[0u8; 4]);
-    
+
     // FileIndex (4 bytes)
     data.extend_from_slice(&0u32.to_le_bytes());
-    
+
     // CreationTime (8 bytes)
     let created = systemtime_to_filetime(entry.metadata.created);
     data.extend_from_slice(&created.to_le_bytes());
-    
+
     // LastAccessTime (8 bytes)
     let modified = systemtime_to_filetime(entry.metadata.modified);
     data.extend_from_slice(&modified.to_le_bytes());
-    
+
     // LastWriteTime (8 bytes)
     data.extend_from_slice(&modified.to_le_bytes());
-    
+
     // ChangeTime (8 bytes)
     data.extend_from_slice(&modified.to_le_bytes());
-    
+
     // EndOfFile (8 bytes)
     data.extend_from_slice(&entry.metadata.size.to_le_bytes());
-    
+
     // AllocationSize (8 bytes) - round up to 4K
     let alloc_size = (entry.metadata.size + 4095) & !4095;
     data.extend_from_slice(&alloc_size.to_le_bytes());
-    
+
     // ExtFileAttributes (4 bytes)
     let attrs: u32 = if entry.metadata.is_dir { 0x10 } else { 0x20 };
     data.extend_from_slice(&attrs.to_le_bytes());
-    
+
     // FileNameLength (4 bytes)
     let name_bytes = encode_filename(&entry.name, unicode);
     data.extend_from_slice(&(name_bytes.len() as u32).to_le_bytes());
-    
+
     // EaSize (4 bytes)
     data.extend_from_slice(&0u32.to_le_bytes());
-    
+
     // ShortNameLength (1 byte)
     data.push(0);
-    
+
     // Reserved (1 byte)
     data.push(0);
-    
+
     // ShortName (24 bytes) - 8.3 format, usually empty
     data.extend_from_slice(&[0u8; 24]);
-    
+
     // FileName (variable)
     data.extend_from_slice(&name_bytes);
-    
+
     // Pad to 8-byte alignment
     while data.len() % 8 != 0 {
         data.push(0);
     }
-    
+
     // Fill in NextEntryOffset
     if !is_last {
         let next_offset = (data.len() - entry_start) as u32;
@@ -1977,12 +2059,17 @@ fn format_both_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: 
 }
 
 /// SMB_FIND_FILE_FULL_DIRECTORY_INFO format
-fn format_full_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: bool, is_last: bool) {
+fn format_full_directory_info(
+    data: &mut Vec<u8>,
+    entry: &VfsDirEntry,
+    unicode: bool,
+    is_last: bool,
+) {
     let entry_start = data.len();
-    
+
     data.extend_from_slice(&[0u8; 4]); // NextEntryOffset
     data.extend_from_slice(&0u32.to_le_bytes()); // FileIndex
-    
+
     let created = systemtime_to_filetime(entry.metadata.created);
     let modified = systemtime_to_filetime(entry.metadata.modified);
     data.extend_from_slice(&created.to_le_bytes()); // CreationTime
@@ -1990,22 +2077,22 @@ fn format_full_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: 
     data.extend_from_slice(&modified.to_le_bytes()); // LastWriteTime
     data.extend_from_slice(&modified.to_le_bytes()); // ChangeTime
     data.extend_from_slice(&entry.metadata.size.to_le_bytes()); // EndOfFile
-    
+
     let alloc_size = (entry.metadata.size + 4095) & !4095;
     data.extend_from_slice(&alloc_size.to_le_bytes()); // AllocationSize
-    
+
     let attrs: u32 = if entry.metadata.is_dir { 0x10 } else { 0x20 };
     data.extend_from_slice(&attrs.to_le_bytes()); // ExtFileAttributes
-    
+
     let name_bytes = encode_filename(&entry.name, unicode);
     data.extend_from_slice(&(name_bytes.len() as u32).to_le_bytes()); // FileNameLength
     data.extend_from_slice(&0u32.to_le_bytes()); // EaSize
     data.extend_from_slice(&name_bytes); // FileName
-    
+
     while data.len() % 8 != 0 {
         data.push(0);
     }
-    
+
     if !is_last {
         let next_offset = (data.len() - entry_start) as u32;
         data[entry_start..entry_start + 4].copy_from_slice(&next_offset.to_le_bytes());
@@ -2015,10 +2102,10 @@ fn format_full_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: 
 /// SMB_FIND_FILE_DIRECTORY_INFO format
 fn format_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: bool, is_last: bool) {
     let entry_start = data.len();
-    
+
     data.extend_from_slice(&[0u8; 4]); // NextEntryOffset
     data.extend_from_slice(&0u32.to_le_bytes()); // FileIndex
-    
+
     let created = systemtime_to_filetime(entry.metadata.created);
     let modified = systemtime_to_filetime(entry.metadata.modified);
     data.extend_from_slice(&created.to_le_bytes());
@@ -2026,21 +2113,21 @@ fn format_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: bool,
     data.extend_from_slice(&modified.to_le_bytes());
     data.extend_from_slice(&modified.to_le_bytes());
     data.extend_from_slice(&entry.metadata.size.to_le_bytes());
-    
+
     let alloc_size = (entry.metadata.size + 4095) & !4095;
     data.extend_from_slice(&alloc_size.to_le_bytes());
-    
+
     let attrs: u32 = if entry.metadata.is_dir { 0x10 } else { 0x20 };
     data.extend_from_slice(&attrs.to_le_bytes());
-    
+
     let name_bytes = encode_filename(&entry.name, unicode);
     data.extend_from_slice(&(name_bytes.len() as u32).to_le_bytes());
     data.extend_from_slice(&name_bytes);
-    
+
     while data.len() % 8 != 0 {
         data.push(0);
     }
-    
+
     if !is_last {
         let next_offset = (data.len() - entry_start) as u32;
         data[entry_start..entry_start + 4].copy_from_slice(&next_offset.to_le_bytes());
@@ -2051,36 +2138,36 @@ fn format_directory_info(data: &mut Vec<u8>, entry: &VfsDirEntry, unicode: bool,
 fn format_info_standard(data: &mut Vec<u8>, entry: &VfsDirEntry, _unicode: bool, _is_last: bool) {
     // ResumeKey (4 bytes)
     data.extend_from_slice(&0u32.to_le_bytes());
-    
+
     // CreationDate (2) + CreationTime (2)
     let (created_date, created_time) = systemtime_to_dos_datetime(entry.metadata.created);
     data.extend_from_slice(&created_date.to_le_bytes());
     data.extend_from_slice(&created_time.to_le_bytes());
-    
+
     // LastAccessDate (2) + LastAccessTime (2)
     let (modified_date, modified_time) = systemtime_to_dos_datetime(entry.metadata.modified);
     data.extend_from_slice(&modified_date.to_le_bytes());
     data.extend_from_slice(&modified_time.to_le_bytes());
-    
+
     // LastWriteDate (2) + LastWriteTime (2)
     data.extend_from_slice(&modified_date.to_le_bytes());
     data.extend_from_slice(&modified_time.to_le_bytes());
-    
+
     // DataSize (4 bytes)
     data.extend_from_slice(&(entry.metadata.size as u32).to_le_bytes());
-    
+
     // AllocationSize (4 bytes)
     let alloc_size = ((entry.metadata.size + 4095) & !4095) as u32;
     data.extend_from_slice(&alloc_size.to_le_bytes());
-    
+
     // Attributes (2 bytes)
     let attrs: u16 = if entry.metadata.is_dir { 0x10 } else { 0x20 };
     data.extend_from_slice(&attrs.to_le_bytes());
-    
+
     // FileNameLength (1 byte)
     let name_bytes = entry.name.as_bytes();
     data.push(name_bytes.len() as u8);
-    
+
     // FileName (variable, ASCII)
     data.extend_from_slice(name_bytes);
 }
@@ -2102,54 +2189,57 @@ use crate::vfs::VfsMetadata;
 
 /// Convert SystemTime to DOS date/time format (for SMB_INFO_STANDARD)
 fn systemtime_to_dos_datetime(time: Option<std::time::SystemTime>) -> (u16, u16) {
-    use std::time::{UNIX_EPOCH, SystemTime};
-    
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     let time = time.unwrap_or(SystemTime::UNIX_EPOCH);
-    let secs = time.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-    
+    let secs = time
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
     // Convert to DOS date/time
     // DOS date: bits 0-4 = day (1-31), bits 5-8 = month (1-12), bits 9-15 = year-1980
     // DOS time: bits 0-4 = seconds/2 (0-29), bits 5-10 = minutes (0-59), bits 11-15 = hours (0-23)
-    
+
     // Simple conversion from Unix timestamp
     let days_since_1970 = secs / 86400;
     let time_of_day = secs % 86400;
-    
+
     // Approximate year/month/day (not accounting for leap years perfectly, but good enough)
     let days_since_1980 = days_since_1970.saturating_sub(3652); // ~10 years
     let year = (days_since_1980 / 365).min(127) as u16;
     let day_of_year = days_since_1980 % 365;
     let month = ((day_of_year / 30) + 1).min(12) as u16;
     let day = ((day_of_year % 30) + 1).min(31) as u16;
-    
+
     let hours = (time_of_day / 3600) as u16;
     let minutes = ((time_of_day % 3600) / 60) as u16;
     let seconds = ((time_of_day % 60) / 2) as u16; // DOS stores seconds/2
-    
+
     let dos_date = day | (month << 5) | (year << 9);
     let dos_time = seconds | (minutes << 5) | (hours << 11);
-    
+
     (dos_date, dos_time)
 }
 
 /// Format file/directory info for QUERY_PATH_INFO response
 fn format_path_info(metadata: &VfsMetadata, info_level: u16) -> Vec<u8> {
     let mut data = Vec::new();
-    
+
     // Common info levels:
     // 0x0000 = SMB_INFO_STANDARD (DOS date/time format)
     // 0x0001 = SMB_INFO_QUERY_EA_SIZE
     // 0x0101 = SMB_QUERY_FILE_BASIC_INFO
     // 0x0102 = SMB_QUERY_FILE_STANDARD_INFO
     // 0x0107 = SMB_QUERY_FILE_ALL_INFO
-    
+
     match info_level {
         0x0000 | 0x0001 => {
             // SMB_INFO_STANDARD / SMB_INFO_QUERY_EA_SIZE (22 bytes, or 26 with EA)
             // Uses DOS date/time format (Windows 9x/XP compatibility)
             let (created_date, created_time) = systemtime_to_dos_datetime(metadata.created);
             let (modified_date, modified_time) = systemtime_to_dos_datetime(metadata.modified);
-            
+
             data.extend_from_slice(&created_date.to_le_bytes());
             data.extend_from_slice(&created_time.to_le_bytes());
             data.extend_from_slice(&modified_date.to_le_bytes()); // LastAccessDate
@@ -2161,7 +2251,7 @@ fn format_path_info(metadata: &VfsMetadata, info_level: u16) -> Vec<u8> {
             data.extend_from_slice(&alloc_size.to_le_bytes()); // AllocationSize (32-bit)
             let attrs: u16 = if metadata.is_dir { 0x10 } else { 0x20 };
             data.extend_from_slice(&attrs.to_le_bytes()); // Attributes (16-bit)
-            
+
             if info_level == 0x0001 {
                 // SMB_INFO_QUERY_EA_SIZE adds EaSize (4 bytes)
                 data.extend_from_slice(&0u32.to_le_bytes());
@@ -2197,7 +2287,7 @@ fn format_path_info(metadata: &VfsMetadata, info_level: u16) -> Vec<u8> {
             // SMB_QUERY_FILE_ALL_INFO (default for unknown levels)
             let created = systemtime_to_filetime(metadata.created);
             let modified = systemtime_to_filetime(metadata.modified);
-            
+
             // Basic info portion
             data.extend_from_slice(&created.to_le_bytes());
             data.extend_from_slice(&modified.to_le_bytes());
@@ -2206,7 +2296,7 @@ fn format_path_info(metadata: &VfsMetadata, info_level: u16) -> Vec<u8> {
             let attrs: u32 = if metadata.is_dir { 0x10 } else { 0x20 };
             data.extend_from_slice(&attrs.to_le_bytes());
             data.extend_from_slice(&0u32.to_le_bytes()); // Reserved
-            
+
             // Standard info portion
             let alloc_size = (metadata.size + 4095) & !4095;
             data.extend_from_slice(&alloc_size.to_le_bytes());
@@ -2215,16 +2305,16 @@ fn format_path_info(metadata: &VfsMetadata, info_level: u16) -> Vec<u8> {
             data.push(0); // DeletePending
             data.push(if metadata.is_dir { 1 } else { 0 }); // Directory
             data.extend_from_slice(&0u16.to_le_bytes()); // Reserved
-            
+
             // EA info
             data.extend_from_slice(&0u32.to_le_bytes()); // EaSize
-            
+
             // Name info
             let name_bytes = encode_filename(&metadata.name, true);
             data.extend_from_slice(&(name_bytes.len() as u32).to_le_bytes());
             data.extend_from_slice(&name_bytes);
         }
     }
-    
+
     data
 }

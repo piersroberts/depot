@@ -40,7 +40,11 @@ struct AdminState {
 }
 
 impl AdminServer {
-    pub fn new(admin_config: AdminConfig, app_config: Arc<RwLock<Config>>, _vfs: SharedVfs) -> Arc<Self> {
+    pub fn new(
+        admin_config: AdminConfig,
+        app_config: Arc<RwLock<Config>>,
+        _vfs: SharedVfs,
+    ) -> Arc<Self> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
         Arc::new(Self {
             config: admin_config,
@@ -134,7 +138,7 @@ async fn basic_auth_middleware(
 
 fn base64_decode(input: &str) -> Result<String, ()> {
     use std::collections::HashMap;
-    
+
     let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let decode_map: HashMap<char, u8> = alphabet
         .chars()
@@ -165,14 +169,18 @@ fn base64_decode(input: &str) -> Result<String, ()> {
 /// Dashboard page using template
 async fn admin_dashboard(State(state): State<AdminState>) -> impl IntoResponse {
     let config = state.config.read().unwrap();
-    
-    let shares: Vec<_> = config.shares.iter()
-        .map(|(name, s)| context! {
-            name => name,
-            path => s.path.display().to_string(),
-            virtual_path => s.virtual_path,
-            read_only => s.read_only,
-            enabled => s.enabled,
+
+    let shares: Vec<_> = config
+        .shares
+        .iter()
+        .map(|(name, s)| {
+            context! {
+                name => name,
+                path => s.path.display().to_string(),
+                virtual_path => s.virtual_path,
+                read_only => s.read_only,
+                enabled => s.enabled,
+            }
         })
         .collect();
 
@@ -200,14 +208,18 @@ async fn admin_dashboard(State(state): State<AdminState>) -> impl IntoResponse {
 /// Shares management page using template
 async fn admin_shares(State(state): State<AdminState>) -> impl IntoResponse {
     let config = state.config.read().unwrap();
-    
-    let shares: Vec<_> = config.shares.iter()
-        .map(|(name, s)| context! {
-            name => name,
-            path => s.path.display().to_string(),
-            virtual_path => s.virtual_path,
-            read_only => s.read_only,
-            enabled => s.enabled,
+
+    let shares: Vec<_> = config
+        .shares
+        .iter()
+        .map(|(name, s)| {
+            context! {
+                name => name,
+                path => s.path.display().to_string(),
+                virtual_path => s.virtual_path,
+                read_only => s.read_only,
+                enabled => s.enabled,
+            }
         })
         .collect();
 
@@ -248,7 +260,7 @@ struct StatusResponse {
 
 async fn api_status(State(state): State<AdminState>) -> impl IntoResponse {
     let config = state.config.read().unwrap();
-    
+
     Json(StatusResponse {
         server_name: config.server_name.clone(),
         version: env!("CARGO_PKG_VERSION").to_string(),
@@ -261,7 +273,7 @@ async fn api_status(State(state): State<AdminState>) -> impl IntoResponse {
 /// API: Get shares list
 async fn api_shares(State(state): State<AdminState>) -> impl IntoResponse {
     let config = state.config.read().unwrap();
-    
+
     #[derive(Serialize)]
     struct ShareInfo {
         name: String,
@@ -269,8 +281,10 @@ async fn api_shares(State(state): State<AdminState>) -> impl IntoResponse {
         read_only: bool,
         enabled: bool,
     }
-    
-    let shares: Vec<ShareInfo> = config.shares.iter()
+
+    let shares: Vec<ShareInfo> = config
+        .shares
+        .iter()
         .map(|(name, s)| ShareInfo {
             name: name.clone(),
             virtual_path: s.virtual_path.clone(),
@@ -278,6 +292,6 @@ async fn api_shares(State(state): State<AdminState>) -> impl IntoResponse {
             enabled: s.enabled,
         })
         .collect();
-    
+
     Json(shares)
 }

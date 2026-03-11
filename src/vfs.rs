@@ -114,7 +114,7 @@ impl MergedVfs {
 
         for (name, share) in shares.iter().filter(|(_, s)| s.enabled) {
             let virtual_path = normalize_virtual_path(&share.virtual_path);
-            
+
             let mount = MountPoint {
                 virtual_path: virtual_path.clone(),
                 physical_path: share.path.clone(),
@@ -141,7 +141,7 @@ impl MergedVfs {
     /// Returns (mount_point, remainder_path) where remainder is the path within the mount
     fn find_mount(&self, virtual_path: &str) -> Option<(&MountPoint, String)> {
         let normalized = normalize_virtual_path(virtual_path);
-        
+
         // Sort by virtual_path length descending to match most specific first
         let mut sorted_mounts: Vec<_> = self.mounts.iter().collect();
         sorted_mounts.sort_by(|a, b| b.virtual_path.len().cmp(&a.virtual_path.len()));
@@ -150,7 +150,7 @@ impl MergedVfs {
             if normalized == mount.virtual_path {
                 return Some((mount, String::new()));
             }
-            
+
             let prefix = if mount.virtual_path == "/" {
                 "/".to_string()
             } else {
@@ -178,7 +178,7 @@ impl MergedVfs {
         read_only: bool,
     ) -> VfsResult<VfsMetadata> {
         let meta = fs::metadata(physical_path).await?;
-        
+
         Ok(VfsMetadata {
             name: name.to_string(),
             is_dir: meta.is_dir(),
@@ -194,7 +194,7 @@ impl MergedVfs {
 impl VirtualFilesystem for MergedVfs {
     async fn list_dir(&self, path: &str) -> VfsResult<Vec<VfsDirEntry>> {
         let normalized = normalize_virtual_path(path);
-        
+
         // Root directory: list all mount points
         if normalized == "/" {
             let mut entries = Vec::new();
@@ -260,9 +260,10 @@ impl VirtualFilesystem for MergedVfs {
                     let meta = self
                         .to_vfs_metadata(&name, &entry.path(), mount.read_only)
                         .await?;
-                    
-                    let entry_virtual_path = format!("{}/{}", normalized.trim_end_matches('/'), name);
-                    
+
+                    let entry_virtual_path =
+                        format!("{}/{}", normalized.trim_end_matches('/'), name);
+
                     entries.push(VfsDirEntry {
                         name,
                         metadata: meta,
@@ -315,15 +316,12 @@ impl VirtualFilesystem for MergedVfs {
     }
 
     async fn is_dir(&self, path: &str) -> bool {
-        self.metadata(path)
-            .await
-            .map(|m| m.is_dir)
-            .unwrap_or(false)
+        self.metadata(path).await.map(|m| m.is_dir).unwrap_or(false)
     }
 
     async fn open_read(&self, path: &str) -> VfsResult<Box<dyn AsyncRead + Send + Unpin>> {
         let physical_path = self.resolve_path(path)?;
-        
+
         if physical_path.is_dir() {
             return Err(VfsError::IsDirectory(path.to_string()));
         }
@@ -352,7 +350,7 @@ impl VirtualFilesystem for MergedVfs {
                 let canonical = physical_path
                     .canonicalize()
                     .map_err(|_| VfsError::NotFound(normalized.clone()))?;
-                
+
                 let mount_canonical = mount
                     .physical_path
                     .canonicalize()
@@ -374,22 +372,22 @@ impl VirtualFilesystem for MergedVfs {
 /// Normalize a virtual path (ensure leading slash, no trailing slash except for root)
 fn normalize_virtual_path(path: &str) -> String {
     let mut normalized = path.trim().to_string();
-    
+
     // Ensure leading slash
     if !normalized.starts_with('/') {
         normalized = format!("/{}", normalized);
     }
-    
+
     // Remove trailing slash (except for root)
     while normalized.len() > 1 && normalized.ends_with('/') {
         normalized.pop();
     }
-    
+
     // Collapse multiple slashes
     while normalized.contains("//") {
         normalized = normalized.replace("//", "/");
     }
-    
+
     normalized
 }
 
@@ -399,7 +397,7 @@ fn get_root_segment(path: &str) -> Option<String> {
     if normalized == "/" {
         return None;
     }
-    
+
     normalized
         .trim_start_matches('/')
         .split('/')

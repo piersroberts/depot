@@ -13,36 +13,56 @@ static TEMPLATES: OnceLock<Environment<'static>> = OnceLock::new();
 pub fn init() -> &'static Environment<'static> {
     TEMPLATES.get_or_init(|| {
         let mut env = Environment::new();
-        
+
         // Register custom filters
         env.add_filter("filesize", filter_filesize);
         env.add_filter("datetime", filter_datetime);
-        
+
         // HTTP Templates
-        env.add_template("http/directory.html", include_str!("templates/http/directory.html.j2"))
-            .expect("Failed to load directory template");
-        env.add_template("http/error.html", include_str!("templates/http/error.html.j2"))
-            .expect("Failed to load error template");
-        
+        env.add_template(
+            "http/directory.html",
+            include_str!("templates/http/directory.html.j2"),
+        )
+        .expect("Failed to load directory template");
+        env.add_template(
+            "http/error.html",
+            include_str!("templates/http/error.html.j2"),
+        )
+        .expect("Failed to load error template");
+
         // Admin Templates
-        env.add_template("admin/dashboard.html", include_str!("templates/admin/dashboard.html.j2"))
-            .expect("Failed to load admin dashboard template");
-        env.add_template("admin/shares.html", include_str!("templates/admin/shares.html.j2"))
-            .expect("Failed to load admin shares template");
-        env.add_template("admin/config.html", include_str!("templates/admin/config.html.j2"))
-            .expect("Failed to load admin config template");
-        
+        env.add_template(
+            "admin/dashboard.html",
+            include_str!("templates/admin/dashboard.html.j2"),
+        )
+        .expect("Failed to load admin dashboard template");
+        env.add_template(
+            "admin/shares.html",
+            include_str!("templates/admin/shares.html.j2"),
+        )
+        .expect("Failed to load admin shares template");
+        env.add_template(
+            "admin/config.html",
+            include_str!("templates/admin/config.html.j2"),
+        )
+        .expect("Failed to load admin config template");
+
         // FTP Templates (plain text)
-        env.add_template("ftp/welcome.txt", include_str!("templates/ftp/welcome.txt.j2"))
-            .expect("Failed to load FTP welcome template");
-        
+        env.add_template(
+            "ftp/welcome.txt",
+            include_str!("templates/ftp/welcome.txt.j2"),
+        )
+        .expect("Failed to load FTP welcome template");
+
         env
     })
 }
 
 /// Get the template environment
 pub fn get() -> &'static Environment<'static> {
-    TEMPLATES.get().expect("Templates not initialized - call templates::init() first")
+    TEMPLATES
+        .get()
+        .expect("Templates not initialized - call templates::init() first")
 }
 
 /// Render a template with the given context
@@ -55,7 +75,7 @@ pub fn render(template_name: &str, ctx: Value) -> Result<String, minijinja::Erro
 /// Filter: Format bytes as human-readable file size
 fn filter_filesize(value: Value) -> Result<String, minijinja::Error> {
     let bytes: u64 = value.try_into().unwrap_or(0);
-    
+
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
     const GB: u64 = MB * 1024;
@@ -69,7 +89,7 @@ fn filter_filesize(value: Value) -> Result<String, minijinja::Error> {
     } else {
         format!("{}", bytes)
     };
-    
+
     Ok(result)
 }
 
@@ -77,17 +97,18 @@ fn filter_filesize(value: Value) -> Result<String, minijinja::Error> {
 fn filter_datetime(value: Value) -> Result<String, minijinja::Error> {
     // Value should be a unix timestamp (seconds)
     let timestamp: i64 = value.try_into().unwrap_or(0);
-    
+
     if timestamp == 0 {
         return Ok("-".to_string());
     }
-    
+
     use chrono::{Local, TimeZone};
-    let datetime = Local.timestamp_opt(timestamp, 0)
+    let datetime = Local
+        .timestamp_opt(timestamp, 0)
         .single()
         .map(|dt| dt.format("%Y-%m-%d %H:%M").to_string())
         .unwrap_or_else(|| "-".to_string());
-    
+
     Ok(datetime)
 }
 

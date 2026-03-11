@@ -156,7 +156,6 @@ pub struct ProtocolsConfig {
 
     #[serde(default)]
     pub smb: SmbConfig,
-
     // Future protocol support
     // pub appleshare: Option<AppleShareConfig>,
 }
@@ -413,7 +412,7 @@ impl Config {
     #[allow(dead_code)]
     pub fn load_or_default() -> anyhow::Result<Self> {
         let config_path = Self::default_config_path();
-        
+
         if config_path.exists() {
             Self::load(&config_path)
         } else {

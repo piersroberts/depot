@@ -161,9 +161,12 @@ fn print_version() {
 
 fn init_config() -> anyhow::Result<()> {
     let config_path = Config::default_config_path();
-    
+
     if config_path.exists() {
-        anyhow::bail!("Configuration file already exists: {}", config_path.display());
+        anyhow::bail!(
+            "Configuration file already exists: {}",
+            config_path.display()
+        );
     }
 
     // Generate random admin credentials
@@ -224,7 +227,7 @@ fn init_config() -> anyhow::Result<()> {
     };
 
     example_config.save(&config_path)?;
-    
+
     println!("Created example configuration: {}", config_path.display());
     println!();
     println!("Admin panel credentials (save these!):");
@@ -232,17 +235,17 @@ fn init_config() -> anyhow::Result<()> {
     println!("  Password: {}", admin_password);
     println!();
     println!("Please edit the file to configure your shares before starting the server.");
-    
+
     Ok(())
 }
 
 /// Prompt for password input (hides input on supported terminals)
 fn prompt_password(prompt: &str) -> anyhow::Result<String> {
     use std::io::{self, Write};
-    
+
     print!("{}", prompt);
     io::stdout().flush()?;
-    
+
     // Use rpassword for cross-platform hidden input
     let password = rpassword::read_password().unwrap_or_else(|_| {
         // Fallback to regular input
@@ -250,42 +253,48 @@ fn prompt_password(prompt: &str) -> anyhow::Result<String> {
         io::stdin().read_line(&mut input).ok();
         input.trim().to_string()
     });
-    
+
     Ok(password)
 }
 
 /// Add a new user to the configuration
 fn cmd_add_user(config_path: &PathBuf, username: &str) -> anyhow::Result<()> {
     if !config_path.exists() {
-        anyhow::bail!("Configuration file not found: {}\nRun 'depot --init' first.", config_path.display());
+        anyhow::bail!(
+            "Configuration file not found: {}\nRun 'depot --init' first.",
+            config_path.display()
+        );
     }
-    
+
     let mut config = Config::load(config_path)?;
-    
+
     // Check if user already exists
     if config.users.contains_key(username) {
         anyhow::bail!("User '{}' already exists", username);
     }
-    
+
     // Prompt for password
     let password = prompt_password("Enter password: ")?;
     if password.is_empty() {
         anyhow::bail!("Password cannot be empty");
     }
-    
+
     let password_confirm = prompt_password("Confirm password: ")?;
     if password != password_confirm {
         anyhow::bail!("Passwords do not match");
     }
-    
+
     // Create user with no share access by default
     let user = config::User::new(&password, Vec::new())?;
     config.add_user(username.to_string(), user)?;
     config.save(config_path)?;
-    
+
     println!("User '{}' added successfully.", username);
-    println!("Use 'depot grant {} <share>' to grant access to shares.", username);
-    
+    println!(
+        "Use 'depot grant {} <share>' to grant access to shares.",
+        username
+    );
+
     Ok(())
 }
 
@@ -294,13 +303,13 @@ fn cmd_remove_user(config_path: &PathBuf, username: &str) -> anyhow::Result<()> 
     if !config_path.exists() {
         anyhow::bail!("Configuration file not found: {}", config_path.display());
     }
-    
+
     let mut config = Config::load(config_path)?;
     config.remove_user(username)?;
     config.save(config_path)?;
-    
+
     println!("User '{}' removed.", username);
-    
+
     Ok(())
 }
 
@@ -309,34 +318,34 @@ fn cmd_set_password(config_path: &PathBuf, username: &str) -> anyhow::Result<()>
     if !config_path.exists() {
         anyhow::bail!("Configuration file not found: {}", config_path.display());
     }
-    
+
     let mut config = Config::load(config_path)?;
-    
+
     // Check if user exists
     if !config.users.contains_key(username) {
         anyhow::bail!("User '{}' not found", username);
     }
-    
+
     // Prompt for new password
     let password = prompt_password("Enter new password: ")?;
     if password.is_empty() {
         anyhow::bail!("Password cannot be empty");
     }
-    
+
     let password_confirm = prompt_password("Confirm new password: ")?;
     if password != password_confirm {
         anyhow::bail!("Passwords do not match");
     }
-    
+
     // Update password hash
     let new_hash = config::hash_password(&password)?;
     if let Some(user) = config.users.get_mut(username) {
         user.password_hash = new_hash;
     }
     config.save(config_path)?;
-    
+
     println!("Password updated for user '{}'.", username);
-    
+
     Ok(())
 }
 
@@ -345,9 +354,9 @@ fn cmd_grant(config_path: &PathBuf, username: &str, share_name: &str) -> anyhow:
     if !config_path.exists() {
         anyhow::bail!("Configuration file not found: {}", config_path.display());
     }
-    
+
     let mut config = Config::load(config_path)?;
-    
+
     // Check share exists (unless granting "*" for all)
     if share_name != "*" && !config.shares.contains_key(share_name) {
         let available: Vec<_> = config.shares.keys().map(|s| s.as_str()).collect();
@@ -357,16 +366,16 @@ fn cmd_grant(config_path: &PathBuf, username: &str, share_name: &str) -> anyhow:
             available.join(", ")
         );
     }
-    
+
     config.grant_share(username, share_name)?;
     config.save(config_path)?;
-    
+
     if share_name == "*" {
         println!("User '{}' granted access to ALL shares.", username);
     } else {
         println!("User '{}' granted access to '{}'.", username, share_name);
     }
-    
+
     Ok(())
 }
 
@@ -375,13 +384,13 @@ fn cmd_revoke(config_path: &PathBuf, username: &str, share_name: &str) -> anyhow
     if !config_path.exists() {
         anyhow::bail!("Configuration file not found: {}", config_path.display());
     }
-    
+
     let mut config = Config::load(config_path)?;
     config.revoke_share(username, share_name)?;
     config.save(config_path)?;
-    
+
     println!("User '{}' access to '{}' revoked.", username, share_name);
-    
+
     Ok(())
 }
 
@@ -390,15 +399,15 @@ fn cmd_list_users(config_path: &PathBuf) -> anyhow::Result<()> {
     if !config_path.exists() {
         anyhow::bail!("Configuration file not found: {}", config_path.display());
     }
-    
+
     let config = Config::load(config_path)?;
-    
+
     if config.users.is_empty() {
         println!("No users configured.");
         println!("Use 'depot add-user <username>' to add a user.");
         return Ok(());
     }
-    
+
     println!("Configured users:");
     println!("{:-<60}", "");
     for (username, user) in &config.users {
@@ -414,7 +423,7 @@ fn cmd_list_users(config_path: &PathBuf) -> anyhow::Result<()> {
             println!("    Description: {}", desc);
         }
     }
-    
+
     Ok(())
 }
 
@@ -437,7 +446,10 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Determine config path for user management commands
-    let config_path = args.config_path.clone().unwrap_or_else(Config::default_config_path);
+    let config_path = args
+        .config_path
+        .clone()
+        .unwrap_or_else(Config::default_config_path);
 
     // Handle user management commands
     if let Some(username) = &args.add_user {
@@ -474,9 +486,9 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Initialize logging
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(&config.log_level));
-    
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&config.log_level));
+
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false)
@@ -536,33 +548,38 @@ async fn main() -> anyhow::Result<()> {
         println!("\n═══════════════════════════════════════════════════════════");
         println!("  Depot File Server is running!");
         println!("═══════════════════════════════════════════════════════════");
-        
+
         if cfg.protocols.ftp.enabled {
-            println!("  FTP:   ftp://{}:{}", 
+            println!(
+                "  FTP:   ftp://{}:{}",
                 get_local_ip().unwrap_or_else(|| cfg.protocols.ftp.bind_address.to_string()),
                 cfg.protocols.ftp.port
             );
         }
-        
+
         if cfg.protocols.http.enabled {
-            println!("  HTTP:  http://{}:{}", 
+            println!(
+                "  HTTP:  http://{}:{}",
                 get_local_ip().unwrap_or_else(|| cfg.protocols.http.bind_address.to_string()),
                 cfg.protocols.http.port
             );
         }
-        
+
         if cfg.protocols.smb.enabled {
             let ip = get_local_ip().unwrap_or_else(|| cfg.protocols.smb.bind_address.to_string());
-            println!("  SMB:   \\\\{}\\<share>  (port {})", ip, cfg.protocols.smb.port);
-        }
-        
-        if cfg.admin.enabled {
-            println!("  Admin: http://{}:{}", 
-                cfg.admin.bind_address,
-                cfg.admin.port
+            println!(
+                "  SMB:   \\\\{}\\<share>  (port {})",
+                ip, cfg.protocols.smb.port
             );
         }
-        
+
+        if cfg.admin.enabled {
+            println!(
+                "  Admin: http://{}:{}",
+                cfg.admin.bind_address, cfg.admin.port
+            );
+        }
+
         println!("═══════════════════════════════════════════════════════════");
         println!("  Press Ctrl+C to stop the server");
         println!("═══════════════════════════════════════════════════════════\n");
@@ -570,23 +587,23 @@ async fn main() -> anyhow::Result<()> {
 
     // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
-    
+
     tracing::info!("Shutting down...");
-    
+
     // Stop servers
     ftp_server.stop().await?;
     http_server.stop().await?;
     admin_server.stop().await?;
 
     tracing::info!("Goodbye!");
-    
+
     Ok(())
 }
 
 /// Try to get local IP address for display purposes
 fn get_local_ip() -> Option<String> {
     use std::net::UdpSocket;
-    
+
     // This doesn't actually send anything, just uses the OS routing to find local IP
     let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
     socket.connect("8.8.8.8:80").ok()?;

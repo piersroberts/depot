@@ -58,7 +58,7 @@ pub fn get_theme(name: &str) -> Theme {
 pub fn list_themes() -> Vec<&'static str> {
     vec![
         "modern",
-        "terminal", 
+        "terminal",
         "paperwhite",
         "ocean",
         "midnight",

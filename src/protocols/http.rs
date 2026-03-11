@@ -83,7 +83,10 @@ impl HttpServer {
         // Conditionally add authentication middleware
         if self.config.require_auth {
             router
-                .layer(middleware::from_fn_with_state(state.clone(), http_auth_middleware))
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    http_auth_middleware,
+                ))
                 .with_state(state)
         } else {
             router.with_state(state)
@@ -143,10 +146,7 @@ async fn handle_root(State(state): State<AppState>) -> impl IntoResponse {
 }
 
 /// Handle any path
-async fn handle_path(
-    State(state): State<AppState>,
-    Path(path): Path<String>,
-) -> impl IntoResponse {
+async fn handle_path(State(state): State<AppState>, Path(path): Path<String>) -> impl IntoResponse {
     let virtual_path = format!("/{}", path);
 
     // Check if it's a directory or file
@@ -193,7 +193,13 @@ async fn handle_file(state: &AppState, path: &str) -> Response<Body> {
 
     let file = match tokio::fs::File::open(&physical_path).await {
         Ok(f) => f,
-        Err(_) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, "Cannot open file", &state.config),
+        Err(_) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Cannot open file",
+                &state.config,
+            )
+        }
     };
 
     let content_type = guess_content_type(path);
@@ -219,14 +225,16 @@ async fn handle_file(state: &AppState, path: &str) -> Response<Body> {
 }
 
 /// Generate directory listing HTML using minijinja template
-fn generate_directory_html(path: &str, mut entries: Vec<VfsDirEntry>, config: &HttpConfig) -> String {
+fn generate_directory_html(
+    path: &str,
+    mut entries: Vec<VfsDirEntry>,
+    config: &HttpConfig,
+) -> String {
     // Sort: directories first, then by name
-    entries.sort_by(|a, b| {
-        match (a.metadata.is_dir, b.metadata.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        }
+    entries.sort_by(|a, b| match (a.metadata.is_dir, b.metadata.is_dir) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
 
     // Convert entries to template-friendly format
@@ -239,7 +247,7 @@ fn generate_directory_html(path: &str, mut entries: Vec<VfsDirEntry>, config: &H
                 format!("/{}", e.virtual_path)
             };
             let link = url_encode_path(&raw_path);
-            
+
             let display_name = if e.metadata.is_dir {
                 format!("{}/", e.name)
             } else {
@@ -344,7 +352,10 @@ async fn http_auth_middleware(
 
     Response::builder()
         .status(StatusCode::UNAUTHORIZED)
-        .header(header::WWW_AUTHENTICATE, "Basic realm=\"Depot File Server\"")
+        .header(
+            header::WWW_AUTHENTICATE,
+            "Basic realm=\"Depot File Server\"",
+        )
         .header(header::CONTENT_TYPE, "text/plain")
         .body(Body::from("Unauthorized - Please log in"))
         .unwrap()
@@ -353,7 +364,7 @@ async fn http_auth_middleware(
 /// Decode base64 string
 fn base64_decode(input: &str) -> Result<String, ()> {
     use std::collections::HashMap;
-    
+
     let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let decode_map: HashMap<char, u8> = alphabet
         .chars()
@@ -397,7 +408,7 @@ fn guess_content_type(path: &str) -> &'static str {
         "js" => "application/javascript",
         "json" => "application/json",
         "xml" => "application/xml",
-        
+
         // Images
         "jpg" | "jpeg" => "image/jpeg",
         "png" => "image/png",
@@ -405,7 +416,7 @@ fn guess_content_type(path: &str) -> &'static str {
         "bmp" => "image/bmp",
         "ico" => "image/x-icon",
         "svg" => "image/svg+xml",
-        
+
         // Audio
         "mp3" => "audio/mpeg",
         "wav" => "audio/wav",
@@ -415,13 +426,13 @@ fn guess_content_type(path: &str) -> &'static str {
         "s3m" => "audio/s3m",
         "xm" => "audio/xm",
         "it" => "audio/it",
-        
+
         // Video
         "mp4" => "video/mp4",
         "avi" => "video/x-msvideo",
         "mkv" => "video/x-matroska",
         "mov" => "video/quicktime",
-        
+
         // Archives
         "zip" => "application/zip",
         "gz" | "gzip" => "application/gzip",
@@ -431,19 +442,19 @@ fn guess_content_type(path: &str) -> &'static str {
         "lha" | "lzh" => "application/x-lzh-compressed",
         "dms" => "application/x-dms",
         "adf" => "application/x-amiga-disk-format",
-        
+
         // Executables and disk images
         "exe" => "application/x-msdownload",
         "iso" => "application/x-iso9660-image",
         "img" => "application/octet-stream",
         "bin" => "application/octet-stream",
         "rom" => "application/octet-stream",
-        
+
         // Documents
         "pdf" => "application/pdf",
         "doc" => "application/msword",
         "rtf" => "application/rtf",
-        
+
         // Default
         _ => "application/octet-stream",
     }
