@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Depot Admin</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 40px; background: #f5f5f5; }
+.container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+.nav { margin: 20px 0; }
+.nav a { margin-right: 20px; color: #007bff; text-decoration: none; }
+.nav a:hover { text-decoration: underline; }
+.status { background: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+th { background: #f8f9fa; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Depot File Server</h1>
+<div class="nav">
+<a href="/">Dashboard</a>
+<a href="/shares">Shares</a>
+<a href="/config">Configuration</a>
+</div>
+
+<div class="status">
+<strong>Server Status:</strong> Running<br>
+<strong>Server Name:</strong> {{ server_name }}
+</div>
+
+<h2>Protocol Status</h2>
+<table>
+<tr><th>Protocol</th><th>Status</th><th>Address</th></tr>
+<tr>
+<td>FTP</td>
+<td>{% if ftp.enabled %}✓ Enabled{% else %}✗ Disabled{% endif %}</td>
+<td>{% if ftp.enabled %}{{ ftp.bind_address }}:{{ ftp.port }}{% else %}-{% endif %}</td>
+</tr>
+<tr>
+<td>HTTP</td>
+<td>{% if http.enabled %}✓ Enabled{% else %}✗ Disabled{% endif %}</td>
+<td>{% if http.enabled %}{{ http.bind_address }}:{{ http.port }}{% else %}-{% endif %}</td>
+</tr>
+</table>
+
+<h2>Active Shares</h2>
+<table>
+<tr><th>Name</th><th>Path</th><th>Virtual Path</th></tr>
+{% for share in shares %}
+{% if share.enabled %}
+<tr>
+<td>{{ share.name }}</td>
+<td>{{ share.path }}</td>
+<td>{{ share.virtual_path }}</td>
+</tr>
+{% endif %}
+{% endfor %}
+</table>
+</div>
+</body>
+</html>

@@ -1,0 +1,74 @@
+[package]
+name = "depot"
+version = "0.1.0"
+edition = "2021"
+description = "Portable file sharing server for retro and modern machines"
+license = "MIT"
+authors = ["Depot Contributors"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# FTP server
+unftp-sbe-fs = "0.2"
+libunftp = "0.20"
+
+# HTTP server (minimal, retro-compatible)
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors"] }
+tokio-util = { version = "0.7", features = ["io"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Random generation
+rand = "0.8"
+
+# Templating (lightweight Jinja2-like)
+minijinja = "2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1"
+thiserror = "1"
+
+# Password hashing
+argon2 = "0.5"
+
+# Terminal handling (for password input)
+libc = "0.2"
+
+# Async utilities
+async-trait = "0.1"
+futures = "0.3"
+
+# URL encoding
+urlencoding = "2"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# For future SQLite indexing (optional feature)
+# rusqlite = { version = "0.31", optional = true, features = ["bundled"] }
+
+# Windows console API (for password input on Windows)
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = ["Win32_System_Console"] }
+
+[features]
+default = []
+# indexing = ["rusqlite"]
+
+[profile.release]
+opt-level = "z"   # Optimize for size
+lto = true        # Link-time optimization
+codegen-units = 1 # Single codegen unit for better optimization
+panic = "abort"   # No unwinding
+strip = true      # Strip symbols

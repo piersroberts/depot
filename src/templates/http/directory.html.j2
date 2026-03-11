@@ -1,0 +1,63 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+<head>
+<title>Index of {{ path }}</title>
+<style>
+body {
+  font-family: {{ theme.font }};
+  margin: 20px;
+  line-height: 1.4;
+  background: {{ theme.bg }};
+  color: {{ theme.fg }};
+  {% if theme.font_size %}font-size: {{ theme.font_size }};{% endif %}
+}
+table { border-collapse: collapse; width: 100%; max-width: 900px; }
+th, td { padding: 8px 15px; text-align: left; }
+th {
+  border-bottom: 2px solid {{ theme.th_border }};
+  background: {{ theme.th_bg }};
+}
+{% if theme.td_border %}td { border-bottom: 1px solid {{ theme.td_border }}; }{% endif %}
+tr:hover { background: {{ theme.row_hover }}; }
+a { text-decoration: none; color: {{ theme.link }}; }
+a:hover {
+  text-decoration: underline;
+  color: {{ theme.link_hover }};
+  {% if theme.link_shadow %}text-shadow: {{ theme.link_shadow }};{% endif %}
+}
+.dir { font-weight: bold; }
+.footer {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid {{ theme.border }};
+  font-size: 0.9em;
+}
+address { font-style: normal; color: {{ theme.muted }}; }
+</style>
+{% if custom_css %}<style>{{ custom_css }}</style>{% endif %}
+</head>
+<body>
+<h1>Index of {{ path }}</h1>
+{% if parent_path %}<a href="{{ parent_path }}">[Parent Directory]</a>{% endif %}
+<hr>
+<table>
+<tr>
+<th>Name</th>
+{% if show_file_sizes %}<th>Size</th>{% endif %}
+{% if show_dates %}<th>Modified</th>{% endif %}
+</tr>
+{% for entry in entries %}
+<tr>
+<td><a href="{{ entry.link }}"{% if entry.is_dir %} class="dir"{% endif %}>{{ entry.display_name }}</a></td>
+{% if show_file_sizes %}<td>{% if entry.is_dir %}-{% else %}{{ entry.size|filesize }}{% endif %}</td>{% endif %}
+{% if show_dates %}<td>{{ entry.modified|datetime }}</td>{% endif %}
+</tr>
+{% endfor %}
+</table>
+<hr>
+<div class="footer">
+{% if footer_message %}{{ footer_message }}{% endif %}
+<address>{{ server_name }}</address>
+</div>
+</body>
+</html>

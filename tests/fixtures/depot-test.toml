@@ -1,0 +1,24 @@
+server_name = "TestDepot"
+log_level = "warn"
+
+[shares.TestShare]
+path = "tests/fixtures"
+virtual_path = "/testshare"
+read_only = true
+enabled = true
+
+[protocols.ftp]
+enabled = false
+
+[protocols.http]
+enabled = false
+
+[protocols.smb]
+enabled = true
+port = 4450
+netbios_name = "TESTDEPOT"
+workgroup = "WORKGROUP"
+guest_access = true
+
+[admin]
+enabled = false

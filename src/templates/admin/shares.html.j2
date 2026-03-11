@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Shares - Depot Admin</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 40px; background: #f5f5f5; }
+.container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+.nav { margin: 20px 0; }
+.nav a { margin-right: 20px; color: #007bff; text-decoration: none; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+th { background: #f8f9fa; }
+code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+.note { background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Configured Shares</h1>
+<div class="nav">
+<a href="/">Dashboard</a>
+<a href="/shares">Shares</a>
+<a href="/config">Configuration</a>
+</div>
+
+<div class="note">
+<strong>Note:</strong> To add or modify shares, edit the <code>depot.toml</code> configuration file and restart the server.
+</div>
+
+<table>
+<tr>
+<th>Name</th>
+<th>Local Path</th>
+<th>Virtual Path</th>
+<th>Access</th>
+<th>Enabled</th>
+</tr>
+{% for share in shares %}
+<tr>
+<td>{{ share.name }}</td>
+<td><code>{{ share.path }}</code></td>
+<td>{{ share.virtual_path }}</td>
+<td>{% if share.read_only %}Read-only{% else %}Read-write{% endif %}</td>
+<td>{% if share.enabled %}✓{% else %}✗{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+</body>
+</html>
