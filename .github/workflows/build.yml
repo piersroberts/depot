@@ -47,14 +47,15 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Rename artifact
+      - name: Package artifact
         shell: bash
         run: |
           mkdir -p artifacts
+          cd target/${{ matrix.target }}/release
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cp target/${{ matrix.target }}/release/depot.exe artifacts/depot-${{ matrix.target }}.exe
+            7z a ../../../artifacts/depot-${{ matrix.target }}.zip depot.exe
           else
-            cp target/${{ matrix.target }}/release/depot artifacts/depot-${{ matrix.target }}
+            tar -czf ../../../artifacts/depot-${{ matrix.target }}.tar.gz depot
           fi
 
       - name: Upload artifact
@@ -82,3 +83,39 @@ jobs:
         with:
           files: artifacts/*
           generate_release_notes: true
+
+  latest:
+    needs: build
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Delete existing latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete latest --yes || true
+
+      - name: Create latest release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          name: Latest Build
+          body: |
+            ⚠️ **Development build** - automatically updated on every push to master.
+            
+            For stable releases, use a [tagged version](../../releases) instead.
+            
+            **Commit:** ${{ github.sha }}
+            **Built:** ${{ github.event.head_commit.timestamp }}
+          files: artifacts/*
+          prerelease: true

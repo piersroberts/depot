@@ -14,6 +14,19 @@ A portable, single-binary file sharing server designed for compatibility with bo
 - **Cross-Platform** - Runs on Windows, macOS, and Linux
 - **Single Binary** - No runtime dependencies, just one file to deploy
 
+## Downloads
+
+Pre-built binaries are available for all major platforms:
+
+| Platform | Download |
+|----------|----------|
+| Linux (x86_64) | [depot-x86_64-unknown-linux-gnu.tar.gz](../../releases/latest/download/depot-x86_64-unknown-linux-gnu.tar.gz) |
+| macOS (Intel) | [depot-x86_64-apple-darwin.tar.gz](../../releases/latest/download/depot-x86_64-apple-darwin.tar.gz) |
+| macOS (Apple Silicon) | [depot-aarch64-apple-darwin.tar.gz](../../releases/latest/download/depot-aarch64-apple-darwin.tar.gz) |
+| Windows (x86_64) | [depot-x86_64-pc-windows-msvc.zip](../../releases/latest/download/depot-x86_64-pc-windows-msvc.zip) |
+
+> **Note:** The `latest` release is automatically updated on every push to master. For stable versions, see [tagged releases](../../releases).
+
 ## Quick Start
 
 ```bash
@@ -36,8 +49,7 @@ Depot uses a TOML configuration file. Run `depot --init` to create an example:
 server_name = "Depot"
 log_level = "info"
 
-[[shares]]
-name = "Public"
+[shares.Public]
 path = "/path/to/public/files"
 virtual_path = "/public"
 read_only = true
@@ -63,13 +75,13 @@ password = "changeme"
 
 ### Shares
 
-Each share maps a local directory to a virtual path:
+Each share maps a local directory to a virtual path. The share name is the table key (e.g., `[shares.Games]`):
 
-- `name` - Display name for the share
 - `path` - Local filesystem path to share
 - `virtual_path` - How clients see this share (e.g., `/games` makes files accessible at `/games/filename.zip`)
 - `read_only` - Whether write operations are allowed (default: true)
-- `enabled` - Whether this share is active
+- `description` - Optional description for the share
+- `enabled` - Whether this share is active (default: true)
 
 ### Protocols
 
@@ -92,18 +104,26 @@ Each share maps a local directory to a virtual path:
 - Read-only access for security
 - Compatible with Windows 98, ME, 2000, XP
 
-**Note:** Standard SMB uses port 445, which requires elevated privileges. See [Privileged Ports](#privileged-ports) below.
+**Note:** SMB is disabled by default. Standard SMB uses port 445, which requires elevated privileges. See [Privileged Ports](#privileged-ports) below.
 
 ### SMB Configuration Example
+
+To enable SMB, add this to your `depot.toml`:
 
 ```toml
 [protocols.smb]
 enabled = true
-port = 445              # Standard port (requires root)
+# Port 4450 (default) works without root but requires Windows registry changes
+# Port 445 is the standard SMB port but requires root/setcap
+port = 4450
 netbios_name = "DEPOT"
 workgroup = "WORKGROUP"
 guest_access = true
 ```
+
+To connect from Windows to a non-standard port (4450), you can either:
+1. Use port forwarding (iptables/pfctl) to redirect 445 → 4450 on the server
+2. Run depot on port 445 with elevated privileges (see [Privileged Ports](#privileged-ports))
 
 ## Building
 
