@@ -9,8 +9,6 @@
 use crate::config::{FtpConfig, User};
 use crate::vfs::{SharedVfs, VfsError};
 use async_trait::async_trait;
-use unftp_core::auth::{AuthenticationError, Authenticator, Credentials, DefaultUser, Principal};
-use unftp_core::storage::{Error, ErrorKind, Fileinfo, Metadata, Result, StorageBackend};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -18,6 +16,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::io::AsyncRead;
+use unftp_core::auth::{AuthenticationError, Authenticator, Credentials, DefaultUser, Principal};
+use unftp_core::storage::{Error, ErrorKind, Fileinfo, Metadata, Result, StorageBackend};
 
 use super::ProtocolServer;
 
@@ -372,7 +372,9 @@ impl Authenticator for VfsAuthenticator {
         if self.allow_anonymous
             && (username.eq_ignore_ascii_case("anonymous") || username.eq_ignore_ascii_case("ftp"))
         {
-            return Ok(Principal { username: username.to_string() });
+            return Ok(Principal {
+                username: username.to_string(),
+            });
         }
 
         // Check user credentials - get password from credentials
@@ -384,7 +386,9 @@ impl Authenticator for VfsAuthenticator {
         // Look up user and verify password using Argon2
         if let Some(user) = self.users.get(username) {
             if user.enabled && user.verify_password(password) {
-                return Ok(Principal { username: username.to_string() });
+                return Ok(Principal {
+                    username: username.to_string(),
+                });
             }
         }
         Err(AuthenticationError::BadPassword)

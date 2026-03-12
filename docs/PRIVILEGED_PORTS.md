@@ -78,13 +78,13 @@ echo "rdr pass on lo0 inet proto tcp from any to any port 445 -> 127.0.0.1 port 
 
 To make this persistent, create `/etc/pf.anchors/depot`:
 
-```
+```text
 rdr pass on lo0 inet proto tcp from any to any port 445 -> 127.0.0.1 port 4450
 ```
 
 Then add to `/etc/pf.conf`:
 
-```
+```text
 rdr-anchor "depot"
 load anchor "depot" from "/etc/pf.anchors/depot"
 ```
@@ -94,10 +94,10 @@ load anchor "depot" from "/etc/pf.anchors/depot"
 The simplest option is to use the default non-privileged ports:
 
 | Protocol | Default Port | Standard Port |
-|----------|-------------|---------------|
-| FTP      | 2121        | 21            |
-| HTTP     | 8080        | 80            |
-| SMB      | 4450        | 445           |
+| -------- | ------------ | ------------- |
+| FTP      | 2121         | 21            |
+| HTTP     | 8080         | 80            |
+| SMB      | 4450         | 445           |
 
 Most clients can connect to non-standard ports. For SMB, see [Connecting](CONNECTING.md) for Windows-specific workarounds.
 

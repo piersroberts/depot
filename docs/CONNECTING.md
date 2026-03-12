@@ -12,7 +12,7 @@ Windows expects SMB on port 445. If Depot is running on the default port 4450, y
 
 See [Privileged Ports](PRIVILEGED_PORTS.md) for how to bind to port 445 without running as root.
 
-**Option 2: Use port forwarding on the server**
+#### Option 2: Use port forwarding on the server
 
 ```bash
 # Linux
@@ -22,17 +22,18 @@ sudo iptables -t nat -A PREROUTING -p tcp --dport 445 -j REDIRECT --to-port 4450
 echo "rdr pass on lo0 inet proto tcp from any to any port 445 -> 127.0.0.1 port 4450" | sudo pfctl -ef -
 ```
 
-**Option 3: SSH Tunnel** (if XP has an SSH client)
+#### Option 3: SSH Tunnel (if XP has an SSH client)
 
-```
+```bash
 ssh -L 445:server:4450 user@gateway
 ```
 
 Then connect to `\\localhost\sharename`.
 
-**Option 4: Use FTP instead**
+#### Option 4: Use FTP instead
 
 Windows XP's Explorer supports FTP natively:
+
 - Open Explorer
 - Type in address bar: `ftp://server:2121/`
 
@@ -40,7 +41,7 @@ Windows XP's Explorer supports FTP natively:
 
 Once port 445 is accessible:
 
-```
+```batch
 # In Explorer address bar
 \\server\sharename
 
@@ -64,12 +65,14 @@ Enable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol
 
 ### Troubleshooting SMB
 
-**"Windows cannot access \\server"**
+#### "Windows cannot access \\server"
+
 - Check if Depot is running and SMB is enabled
 - Verify firewall allows port 445 (or your custom port)
 - Ensure SMB1 client is enabled on Windows 7+
 
-**"The specified network name is no longer available"**
+#### "The specified network name is no longer available"
+
 - This usually indicates a protocol mismatch
 - Verify Depot's SMB is enabled in config
 
@@ -86,12 +89,14 @@ ftp server 2121
 ### Windows Explorer
 
 Type in the address bar:
-```
+
+```text
 ftp://server:2121/
 ```
 
 For authenticated access:
-```
+
+```text
 ftp://username:password@server:2121/
 ```
 
@@ -104,7 +109,8 @@ Depot is compatible with vintage FTP clients:
 - **DOS**: NCSA FTP
 - **Mac OS 9**: Fetch, Anarchie
 
-**Tips for retro clients:**
+Tips for retro clients:
+
 - Use **passive mode** if behind NAT
 - Depot uses classic LIST format for maximum compatibility
 
@@ -119,7 +125,8 @@ Ensure these ports are accessible through any firewalls.
 ### Web Browsers
 
 Simply navigate to:
-```
+
+```text
 http://server:8080/
 ```
 
@@ -133,7 +140,8 @@ Depot generates HTML 3.2 compatible output that works with:
 - **Lynx** (text-mode)
 - **Opera** 3.x+
 
-**Tips:**
+Tips:
+
 - Enable `retro_compatible = true` in config for pure HTML 3.2 (no CSS)
 - Depot uses HTTP/1.0 compatible responses
 
@@ -172,12 +180,14 @@ Depot works great for streaming media to retro music players:
 ### Windows Media Player
 
 WMP can browse SMB shares directly:
+
 1. Open WMP
 2. Navigate to `\\server\sharename` via the address bar or library
 
 ### VLC
 
 VLC can stream directly from any protocol:
+
 - SMB: `smb://server/sharename/file.mp3`
 - HTTP: `http://server:8080/file.mp3`
 - FTP: `ftp://server:2121/file.mp3`

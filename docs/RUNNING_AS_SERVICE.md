@@ -13,14 +13,14 @@ sudo cp target/release/depot /usr/local/bin/
 sudo chmod +x /usr/local/bin/depot
 ```
 
-2. Create a configuration directory:
+1. Create a configuration directory:
 
 ```bash
 sudo mkdir -p /etc/depot
 sudo cp depot.toml /etc/depot/
 ```
 
-3. Create a systemd service file at `/etc/systemd/system/depot.service`:
+1. Create a systemd service file at `/etc/systemd/system/depot.service`:
 
 ```ini
 [Unit]
@@ -49,13 +49,13 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 ```
 
-4. Create a dedicated user:
+1. Create a dedicated user:
 
 ```bash
 sudo useradd -r -s /usr/sbin/nologin depot
 ```
 
-5. Enable and start the service:
+1. Enable and start the service:
 
 ```bash
 sudo systemctl daemon-reload
@@ -229,7 +229,7 @@ nssm set Depot AppStdout "C:\Program Files\Depot\logs\depot.log"
 nssm set Depot AppStderr "C:\Program Files\Depot\logs\depot.error.log"
 ```
 
-3. Start the service:
+1. Start the service:
 
 ```powershell
 nssm start Depot
