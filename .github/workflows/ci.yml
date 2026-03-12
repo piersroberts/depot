@@ -55,12 +55,20 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            cross: true
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            cross: true
           - os: macos-latest
             target: x86_64-apple-darwin
           - os: macos-latest
             target: aarch64-apple-darwin
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: i686-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
 
@@ -79,17 +87,26 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && !matrix.cross
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake
+
+      - name: Install cross (for ARM builds)
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
 
-      - name: Build
+      - name: Build (native)
+        if: "!matrix.cross"
         run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.cross
+        run: cross build --release --target ${{ matrix.target }}
 
       - name: Package artifact
         shell: bash

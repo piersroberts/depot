@@ -81,13 +81,13 @@ fn filter_filesize(value: Value) -> Result<String, minijinja::Error> {
     const GB: u64 = MB * 1024;
 
     let result = if bytes >= GB {
-        format!("{:.1}G", bytes as f64 / GB as f64)
+        format!("{:.1} GB", bytes as f64 / GB as f64)
     } else if bytes >= MB {
-        format!("{:.1}M", bytes as f64 / MB as f64)
+        format!("{:.1} MB", bytes as f64 / MB as f64)
     } else if bytes >= KB {
-        format!("{:.1}K", bytes as f64 / KB as f64)
+        format!("{:.1} kB", bytes as f64 / KB as f64)
     } else {
-        format!("{bytes}")
+        format!("{bytes} B")
     };
 
     Ok(result)
@@ -126,32 +126,32 @@ mod tests {
 
     #[test]
     fn test_filter_filesize_bytes() {
-        assert_eq!(filter_filesize(Value::from(0u64)).unwrap(), "0");
-        assert_eq!(filter_filesize(Value::from(512u64)).unwrap(), "512");
-        assert_eq!(filter_filesize(Value::from(1023u64)).unwrap(), "1023");
+        assert_eq!(filter_filesize(Value::from(0u64)).unwrap(), "0 B");
+        assert_eq!(filter_filesize(Value::from(512u64)).unwrap(), "512 B");
+        assert_eq!(filter_filesize(Value::from(1023u64)).unwrap(), "1023 B");
     }
 
     #[test]
     fn test_filter_filesize_kilobytes() {
-        assert_eq!(filter_filesize(Value::from(1024u64)).unwrap(), "1.0K");
-        assert_eq!(filter_filesize(Value::from(1536u64)).unwrap(), "1.5K");
-        assert_eq!(filter_filesize(Value::from(10240u64)).unwrap(), "10.0K");
+        assert_eq!(filter_filesize(Value::from(1024u64)).unwrap(), "1.0 kB");
+        assert_eq!(filter_filesize(Value::from(1536u64)).unwrap(), "1.5 kB");
+        assert_eq!(filter_filesize(Value::from(10240u64)).unwrap(), "10.0 kB");
     }
 
     #[test]
     fn test_filter_filesize_megabytes() {
-        assert_eq!(filter_filesize(Value::from(1048576u64)).unwrap(), "1.0M");
-        assert_eq!(filter_filesize(Value::from(1572864u64)).unwrap(), "1.5M");
+        assert_eq!(filter_filesize(Value::from(1048576u64)).unwrap(), "1.0 MB");
+        assert_eq!(filter_filesize(Value::from(1572864u64)).unwrap(), "1.5 MB");
         assert_eq!(
             filter_filesize(Value::from(104857600u64)).unwrap(),
-            "100.0M"
+            "100.0 MB"
         );
     }
 
     #[test]
     fn test_filter_filesize_gigabytes() {
-        assert_eq!(filter_filesize(Value::from(1073741824u64)).unwrap(), "1.0G");
-        assert_eq!(filter_filesize(Value::from(5368709120u64)).unwrap(), "5.0G");
+        assert_eq!(filter_filesize(Value::from(1073741824u64)).unwrap(), "1.0 GB");
+        assert_eq!(filter_filesize(Value::from(5368709120u64)).unwrap(), "5.0 GB");
     }
 
     #[test]

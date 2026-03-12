@@ -18,12 +18,19 @@ A portable, single-binary file sharing server designed for compatibility with bo
 
 Pre-built binaries are available for all major platforms:
 
-| Platform | Download |
-|----------|----------|
-| Linux (x86_64) | [depot-x86_64-unknown-linux-gnu.tar.gz](../../releases/latest/download/depot-x86_64-unknown-linux-gnu.tar.gz) |
-| macOS (Intel) | [depot-x86_64-apple-darwin.tar.gz](../../releases/latest/download/depot-x86_64-apple-darwin.tar.gz) |
-| macOS (Apple Silicon) | [depot-aarch64-apple-darwin.tar.gz](../../releases/latest/download/depot-aarch64-apple-darwin.tar.gz) |
-| Windows (x86_64) | [depot-x86_64-pc-windows-msvc.zip](../../releases/latest/download/depot-x86_64-pc-windows-msvc.zip) |
+| Platform              | Download                                                                                                                |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Linux (x86_64)        | [depot-x86_64-unknown-linux-gnu.tar.gz](../../releases/latest/download/depot-x86_64-unknown-linux-gnu.tar.gz)           |
+| Linux (ARM64)         | [depot-aarch64-unknown-linux-gnu.tar.gz](../../releases/latest/download/depot-aarch64-unknown-linux-gnu.tar.gz)         |
+| Linux (ARM32)         | [depot-armv7-unknown-linux-gnueabihf.tar.gz](../../releases/latest/download/depot-armv7-unknown-linux-gnueabihf.tar.gz) |
+| macOS (Intel)         | [depot-x86_64-apple-darwin.tar.gz](../../releases/latest/download/depot-x86_64-apple-darwin.tar.gz)                     |
+| macOS (Apple Silicon) | [depot-aarch64-apple-darwin.tar.gz](../../releases/latest/download/depot-aarch64-apple-darwin.tar.gz)                   |
+| Windows (x86_64)      | [depot-x86_64-pc-windows-msvc.zip](../../releases/latest/download/depot-x86_64-pc-windows-msvc.zip)                     |
+| Windows (x86, 32-bit) | [depot-i686-pc-windows-msvc.zip](../../releases/latest/download/depot-i686-pc-windows-msvc.zip)                         |
+
+**Raspberry Pi:** Use ARM64 for Pi 3/4/5/Zero 2W with 64-bit OS, or ARM32 for 32-bit Raspberry Pi OS.
+
+**Windows 32-bit:** Supports Windows 7 SP1 and later.
 
 > **Note:** The `latest` release is automatically updated on every push to master. For stable versions, see [tagged releases](../../releases).
 
@@ -171,11 +178,11 @@ Modern security protocols (SMB3, SFTP, HTTPS with TLS 1.3) are incompatible with
 
 ### What's insecure?
 
-| Protocol | Encryption | Authentication | Vulnerabilities |
-|----------|------------|----------------|-----------------|
-| SMB1/CIFS | ❌ None | ❌ Guest/plaintext | MITM, credential sniffing, EternalBlue-class exploits |
-| FTP | ❌ None | ❌ Plaintext passwords | Credential sniffing, session hijacking |
-| HTTP | ❌ None | N/A | Content inspection, MITM |
+| Protocol  | Encryption | Authentication        | Vulnerabilities                                       |
+| --------- | ---------- | --------------------- | ----------------------------------------------------- |
+| SMB1/CIFS | ❌ None     | ❌ Guest/plaintext     | MITM, credential sniffing, EternalBlue-class exploits |
+| FTP       | ❌ None     | ❌ Plaintext passwords | Credential sniffing, session hijacking                |
+| HTTP      | ❌ None     | N/A                   | Content inspection, MITM                              |
 
 ### Safe usage guidelines
 

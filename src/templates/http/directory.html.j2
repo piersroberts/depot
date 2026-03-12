@@ -26,6 +26,7 @@ a:hover {
   {% if theme.link_shadow %}text-shadow: {{ theme.link_shadow }};{% endif %}
 }
 .dir { font-weight: bold; }
+.preview { font-size: 1.1em; }
 .footer {
   margin-top: 20px;
   padding-top: 10px;
@@ -45,12 +46,14 @@ address { font-style: normal; color: {{ theme.muted }}; }
 <th>Name</th>
 {% if show_file_sizes %}<th>Size</th>{% endif %}
 {% if show_dates %}<th>Modified</th>{% endif %}
+<th>View</th>
 </tr>
 {% for entry in entries %}
 <tr>
 <td><a href="{{ entry.link }}"{% if entry.is_dir %} class="dir"{% endif %}>{{ entry.display_name }}</a></td>
 {% if show_file_sizes %}<td>{% if entry.is_dir %}-{% else %}{{ entry.size|filesize }}{% endif %}</td>{% endif %}
 {% if show_dates %}<td>{{ entry.modified|datetime }}</td>{% endif %}
+<td>{% if entry.preview_link %}<a href="{{ entry.preview_link }}" target="_blank" class="preview" title="View {{ entry.preview_type }}">View</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </table>

@@ -8,16 +8,15 @@ authors = ["Depot Contributors"]
 
 [dependencies]
 # Async runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "fs", "io-util", "sync", "signal", "macros"] }
 
-# FTP server
-unftp-sbe-fs = "0.2"
-libunftp = "0.20"
+# FTP server (using ring instead of aws-lc for smaller binary)
+unftp-sbe-fs = "0.4"
+libunftp = { version = "0.23", default-features = false, features = ["ring"] }
+unftp-core = "0.1"
 
 # HTTP server (minimal, retro-compatible)
 axum = "0.7"
-tower = "0.4"
-tower-http = { version = "0.5", features = ["fs", "cors"] }
 tokio-util = { version = "0.7", features = ["io"] }
 
 # Serialization
@@ -48,13 +47,12 @@ rpassword = "7"
 
 # Async utilities
 async-trait = "0.1"
-futures = "0.3"
 
 # URL encoding
 urlencoding = "2"
 
 # Time handling
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
 
 # For future SQLite indexing (optional feature)
 # rusqlite = { version = "0.31", optional = true, features = ["bundled"] }

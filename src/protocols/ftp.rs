@@ -9,8 +9,8 @@
 use crate::config::{FtpConfig, User};
 use crate::vfs::{SharedVfs, VfsError};
 use async_trait::async_trait;
-use libunftp::auth::{AuthenticationError, Authenticator, Credentials, DefaultUser};
-use libunftp::storage::{Error, ErrorKind, Fileinfo, Metadata, Result, StorageBackend};
+use unftp_core::auth::{AuthenticationError, Authenticator, Credentials, DefaultUser, Principal};
+use unftp_core::storage::{Error, ErrorKind, Fileinfo, Metadata, Result, StorageBackend};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -59,7 +59,7 @@ impl FtpServer {
             Arc::new(VfsAuthenticator::new(allow_anonymous, users)),
         )
         .greeting(banner)
-        .passive_ports(passive_start..passive_end)
+        .passive_ports(passive_start..=passive_end)
         .build()?;
 
         Ok(server)
@@ -362,17 +362,17 @@ impl VfsAuthenticator {
 }
 
 #[async_trait]
-impl Authenticator<DefaultUser> for VfsAuthenticator {
+impl Authenticator for VfsAuthenticator {
     async fn authenticate(
         &self,
         username: &str,
         creds: &Credentials,
-    ) -> std::result::Result<DefaultUser, AuthenticationError> {
+    ) -> std::result::Result<Principal, AuthenticationError> {
         // Check anonymous access
         if self.allow_anonymous
             && (username.eq_ignore_ascii_case("anonymous") || username.eq_ignore_ascii_case("ftp"))
         {
-            return Ok(DefaultUser);
+            return Ok(Principal { username: username.to_string() });
         }
 
         // Check user credentials - get password from credentials
@@ -384,7 +384,7 @@ impl Authenticator<DefaultUser> for VfsAuthenticator {
         // Look up user and verify password using Argon2
         if let Some(user) = self.users.get(username) {
             if user.enabled && user.verify_password(password) {
-                return Ok(DefaultUser);
+                return Ok(Principal { username: username.to_string() });
             }
         }
         Err(AuthenticationError::BadPassword)

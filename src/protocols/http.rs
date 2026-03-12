@@ -14,7 +14,7 @@ use crate::vfs::{SharedVfs, VfsDirEntry};
 use async_trait::async_trait;
 use axum::{
     body::Body,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, Request, Response, StatusCode},
     middleware::{self, Next},
     response::IntoResponse,
@@ -145,15 +145,27 @@ async fn handle_root(State(state): State<AppState>) -> impl IntoResponse {
     handle_directory(&state, "/").await
 }
 
+/// Query parameters for file requests
+#[derive(serde::Deserialize, Default)]
+struct FileQuery {
+    /// If present, serve file inline for preview instead of as download
+    #[serde(default)]
+    view: bool,
+}
+
 /// Handle any path
-async fn handle_path(State(state): State<AppState>, Path(path): Path<String>) -> impl IntoResponse {
+async fn handle_path(
+    State(state): State<AppState>,
+    Path(path): Path<String>,
+    Query(query): Query<FileQuery>,
+) -> impl IntoResponse {
     let virtual_path = format!("/{path}");
 
     // Check if it's a directory or file
     if state.vfs.is_dir(&virtual_path).await {
         handle_directory(&state, &virtual_path).await
     } else {
-        handle_file(&state, &virtual_path).await
+        handle_file(&state, &virtual_path, query.view).await
     }
 }
 
@@ -177,7 +189,8 @@ async fn handle_directory(state: &AppState, path: &str) -> Response<Body> {
 }
 
 /// Serve a file
-async fn handle_file(state: &AppState, path: &str) -> Response<Body> {
+/// If `view_mode` is true, serve inline for preview; otherwise serve as download
+async fn handle_file(state: &AppState, path: &str, view_mode: bool) -> Response<Body> {
     let physical_path = match state.vfs.resolve_path(path) {
         Ok(p) => p,
         Err(e) => {
@@ -211,14 +224,25 @@ async fn handle_file(state: &AppState, path: &str) -> Response<Body> {
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
+    // Use inline disposition for view mode (preview), attachment for download
+    let disposition = if view_mode {
+        format!("inline; filename=\"{filename}\"")
+    } else {
+        format!("attachment; filename=\"{filename}\"")
+    };
+
+    // For text preview, force text/plain so browser displays instead of downloads
+    let final_content_type = if view_mode && get_preview_type(&filename) == Some("text") {
+        "text/plain; charset=utf-8"
+    } else {
+        content_type
+    };
+
     Response::builder()
         .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, content_type)
+        .header(header::CONTENT_TYPE, final_content_type)
         .header(header::CONTENT_LENGTH, metadata.len())
-        .header(
-            header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{filename}\""),
-        )
+        .header(header::CONTENT_DISPOSITION, disposition)
         .header(header::CONNECTION, "close")
         .body(body)
         .unwrap()
@@ -254,6 +278,16 @@ fn generate_directory_html(
                 e.name.clone()
             };
 
+            // Get preview type for files (not directories)
+            let preview_type = if e.metadata.is_dir {
+                None
+            } else {
+                get_preview_type(&e.name)
+            };
+
+            // Generate preview link with ?view=true query param
+            let preview_link = preview_type.map(|_| format!("{link}?view=true"));
+
             context! {
                 name => e.name,
                 display_name => display_name,
@@ -261,6 +295,8 @@ fn generate_directory_html(
                 is_dir => e.metadata.is_dir,
                 size => e.metadata.size,
                 modified => templates::systemtime_to_timestamp(e.metadata.modified),
+                preview_type => preview_type,
+                preview_link => preview_link,
             }
         })
         .collect();
@@ -459,6 +495,39 @@ fn guess_content_type(path: &str) -> &'static str {
     }
 }
 
+/// Get preview type for a file based on its extension
+/// Returns the preview type ("image", "audio", "video", "text", "pdf") or None if not previewable
+fn get_preview_type(filename: &str) -> Option<&'static str> {
+    let ext = filename
+        .rsplit('.')
+        .next()
+        .map(|s| s.to_lowercase())
+        .unwrap_or_default();
+
+    match ext.as_str() {
+        // Images - browsers can display natively
+        "jpg" | "jpeg" | "png" | "gif" | "bmp" | "ico" | "svg" | "webp" => Some("image"),
+
+        // Audio - browsers have native players
+        "mp3" | "wav" | "ogg" | "flac" | "m4a" | "aac" | "mod" | "s3m" | "xm" | "it" => {
+            Some("audio")
+        }
+
+        // Video - browsers have native players
+        "mp4" | "webm" | "mov" | "avi" | "mkv" => Some("video"),
+
+        // Text/code files - browsers display as text
+        "txt" | "md" | "json" | "xml" | "html" | "htm" | "css" | "js" | "ts" | "rs" | "py"
+        | "c" | "cpp" | "h" | "hpp" | "java" | "go" | "rb" | "sh" | "yaml" | "yml" | "toml"
+        | "ini" | "cfg" | "conf" | "log" | "csv" => Some("text"),
+
+        // PDF - browsers have built-in viewers
+        "pdf" => Some("pdf"),
+
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -596,5 +665,63 @@ mod tests {
     fn test_base64_decode_no_padding() {
         // base64_decode handles strings without padding
         assert_eq!(base64_decode("SGVsbG8").unwrap(), "Hello");
+    }
+
+    #[test]
+    fn test_get_preview_type_images() {
+        assert_eq!(get_preview_type("photo.jpg"), Some("image"));
+        assert_eq!(get_preview_type("photo.jpeg"), Some("image"));
+        assert_eq!(get_preview_type("image.png"), Some("image"));
+        assert_eq!(get_preview_type("animation.gif"), Some("image"));
+        assert_eq!(get_preview_type("icon.ico"), Some("image"));
+        assert_eq!(get_preview_type("vector.svg"), Some("image"));
+        assert_eq!(get_preview_type("modern.webp"), Some("image"));
+    }
+
+    #[test]
+    fn test_get_preview_type_audio() {
+        assert_eq!(get_preview_type("music.mp3"), Some("audio"));
+        assert_eq!(get_preview_type("sound.wav"), Some("audio"));
+        assert_eq!(get_preview_type("track.ogg"), Some("audio"));
+        assert_eq!(get_preview_type("lossless.flac"), Some("audio"));
+        assert_eq!(get_preview_type("module.mod"), Some("audio"));
+    }
+
+    #[test]
+    fn test_get_preview_type_video() {
+        assert_eq!(get_preview_type("movie.mp4"), Some("video"));
+        assert_eq!(get_preview_type("clip.webm"), Some("video"));
+        assert_eq!(get_preview_type("video.mov"), Some("video"));
+    }
+
+    #[test]
+    fn test_get_preview_type_text() {
+        assert_eq!(get_preview_type("readme.txt"), Some("text"));
+        assert_eq!(get_preview_type("readme.md"), Some("text"));
+        assert_eq!(get_preview_type("config.json"), Some("text"));
+        assert_eq!(get_preview_type("main.rs"), Some("text"));
+        assert_eq!(get_preview_type("script.py"), Some("text"));
+        assert_eq!(get_preview_type("data.csv"), Some("text"));
+    }
+
+    #[test]
+    fn test_get_preview_type_pdf() {
+        assert_eq!(get_preview_type("document.pdf"), Some("pdf"));
+    }
+
+    #[test]
+    fn test_get_preview_type_none() {
+        assert_eq!(get_preview_type("archive.zip"), None);
+        assert_eq!(get_preview_type("disk.iso"), None);
+        assert_eq!(get_preview_type("program.exe"), None);
+        assert_eq!(get_preview_type("unknown.xyz"), None);
+        assert_eq!(get_preview_type("noextension"), None);
+    }
+
+    #[test]
+    fn test_get_preview_type_case_insensitive() {
+        assert_eq!(get_preview_type("IMAGE.PNG"), Some("image"));
+        assert_eq!(get_preview_type("Music.MP3"), Some("audio"));
+        assert_eq!(get_preview_type("README.TXT"), Some("text"));
     }
 }
