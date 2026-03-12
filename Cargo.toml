@@ -8,7 +8,15 @@ authors = ["Depot Contributors"]
 
 [dependencies]
 # Async runtime
-tokio = { version = "1", features = ["rt-multi-thread", "net", "fs", "io-util", "sync", "signal", "macros"] }
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "net",
+    "fs",
+    "io-util",
+    "sync",
+    "signal",
+    "macros",
+] }
 
 # FTP server (using ring instead of aws-lc for smaller binary)
 unftp-sbe-fs = "0.4"
@@ -52,7 +60,10 @@ async-trait = "0.1"
 urlencoding = "2"
 
 # Time handling
-chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+chrono = { version = "0.4", default-features = false, features = [
+    "clock",
+    "serde",
+] }
 
 # For future SQLite indexing (optional feature)
 # rusqlite = { version = "0.31", optional = true, features = ["bundled"] }

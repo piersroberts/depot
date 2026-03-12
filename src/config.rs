@@ -183,8 +183,8 @@ pub struct FtpConfig {
     #[serde(default = "default_passive_end")]
     pub passive_port_end: u16,
 
-    /// Allow anonymous access (disabled by default for security)
-    #[serde(default)]
+    /// Allow anonymous read-only access (enabled by default, like HTTP)
+    #[serde(default = "default_true")]
     pub anonymous: bool,
 
     /// Welcome message
@@ -200,7 +200,7 @@ impl Default for FtpConfig {
             port: default_ftp_port(),
             passive_port_start: default_passive_start(),
             passive_port_end: default_passive_end(),
-            anonymous: false, // Disabled by default for security
+            anonymous: true, // Enabled by default, like HTTP
             banner: default_ftp_banner(),
         }
     }
@@ -738,7 +738,7 @@ mod tests {
         let ftp = FtpConfig::default();
         assert!(ftp.enabled);
         assert_eq!(ftp.port, 2121);
-        assert!(!ftp.anonymous);
+        assert!(ftp.anonymous);
         assert_eq!(ftp.passive_port_start, 60000);
         assert_eq!(ftp.passive_port_end, 60100);
     }
