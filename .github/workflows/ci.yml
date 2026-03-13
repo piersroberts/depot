@@ -51,6 +51,7 @@ jobs:
   build:
     needs: [lint, unit-test]
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -95,6 +96,10 @@ jobs:
       - name: Install cross (for ARM builds)
         if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Clean cached build scripts (cross builds)
+        if: matrix.cross
+        run: cargo clean
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
